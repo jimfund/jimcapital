@@ -1,0 +1,108 @@
+import { drawStrokes, placeNumber, isDrawing } from './drawing.js';
+import { WORLD, isLayout, defaultPosition, validId } from './layout-model.js';
+
+const main = document.querySelector('main');
+export const editing = new URLSearchParams(location.search).get('edit') === '1'
+  && ['localhost', '127.0.0.1'].includes(location.hostname);
+export const items = new Map();
+export let layout = { version: 1, items: {} };
+export let boardScale = 1;
+let placed = false;
+
+async function read(path, fallback) {
+  try {
+    const response = await fetch(path, { cache: 'no-store' });
+    return response.ok ? await response.json() : fallback;
+  } catch { return fallback; }
+}
+
+function mountDrawing(target, drawing, output) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1600;
+  canvas.height = 1200;
+  canvas.setAttribute('aria-hidden', 'true');
+  target.replaceChildren(canvas);
+  target.classList.add('doodled-monitor');
+  drawStrokes(canvas, drawing);
+  if (drawing.number.enabled !== false) {
+    if (!output) {
+      output = document.createElement('output');
+      output.dataset.spxPrice = '';
+      output.textContent = document.querySelector('#spx-price')?.textContent || '—';
+    }
+    output.className = 'doodle-number';
+    target.append(output);
+    const resize = () => placeNumber(target, output, drawing);
+    new ResizeObserver(resize).observe(target);
+    resize();
+  }
+}
+
+function addItem(id, content, nativeWidth, doodle = false) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'site-item';
+  wrapper.dataset.item = id;
+  wrapper.style.width = `${nativeWidth}px`;
+  if (content.parentElement === main) content.replaceWith(wrapper);
+  else main.append(wrapper);
+  wrapper.append(content);
+  content.style.width = '100%';
+  items.set(id, { id, element: wrapper, nativeWidth, doodle });
+}
+
+export function applyLayout(next = layout) {
+  layout = next;
+  placed = true;
+  main.classList.add('layout-board');
+  boardScale = main.clientWidth / WORLD;
+  let height = 800;
+  for (const [id, item] of items) {
+    const position = layout.items[id];
+    const zoom = position.width / item.nativeWidth;
+    item.element.style.transform = `translate(${position.x * boardScale}px, ${position.y * boardScale}px) scale(${zoom * boardScale})`;
+    item.element.style.zIndex = position.z;
+    height = Math.max(height, position.y + item.element.offsetHeight * zoom + 60);
+  }
+  main.style.height = `${height * boardScale}px`;
+}
+
+async function init() {
+  const [monitorDrawing, manifest, saved] = await Promise.all([
+    read('assets/monitor-doodle.json', null), read('assets/doodles.json', { ids: [] }), read('assets/layout.json', null),
+  ]);
+  const monitor = document.querySelector('.monitor');
+  if (isDrawing(monitorDrawing) && monitorDrawing.strokes.length) mountDrawing(monitor, monitorDrawing, document.querySelector('#spx-price'));
+  addItem('prediction', main.querySelector('img'), 105);
+  addItem('angel', main.querySelector('.frame'), 316);
+  addItem('monitor', monitor, 400, true);
+  const ids = Array.isArray(manifest.ids) ? [...new Set(manifest.ids.filter(validId))].slice(0, 100) : [];
+  const drawings = await Promise.all(ids.map(id => read(`assets/doodles/${id}.json`, null)));
+  for (let i = 0; i < ids.length; i++) {
+    if (!isDrawing(drawings[i])) continue;
+    const content = document.createElement('section');
+    mountDrawing(content, drawings[i]);
+    addItem(ids[i], content, 400, true);
+  }
+  let extraIndex = 0;
+  for (const [id] of items) {
+    const fallback = defaultPosition(id, extraIndex);
+    if (validId(id)) extraIndex++;
+    layout.items[id] = isLayout(saved) && saved.items[id] ? saved.items[id] : fallback;
+  }
+  if (editing || (isLayout(saved) && Object.keys(saved.items).length)) applyLayout();
+  new ResizeObserver(() => { if (placed) applyLayout(); }).observe(main);
+  if (['localhost', '127.0.0.1'].includes(location.hostname) && !editing) {
+    const link = document.createElement('a');
+    link.className = 'edit-entry';
+    link.href = '?edit=1';
+    link.textContent = '↔';
+    link.setAttribute('aria-label', '↔');
+    document.body.append(link);
+  }
+  if (editing) {
+    document.body.classList.add('editing');
+    const { startEditor } = await import('./layout-editor.js');
+    startEditor();
+  }
+}
+export const ready = init();

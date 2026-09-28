@@ -117,3 +117,7 @@
 .ticker-track span { padding-right: 28px; }
 @keyframes ticker-scroll { to { transform: translateX(-50%); } }
 @media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; } }
+.monitor.doodled-monitor { flex-basis: 400px; padding: 0; aspect-ratio: 4 / 3; }
+.monitor.doodled-monitor::before, .monitor.doodled-monitor::after { display: none; }
+.doodled-monitor canvas { display: block; width: 100%; height: 100%; }
+.doodle-number { position: absolute; display: block; margin: 0; transform: translate(-50%, -50%); font-family: "Courier New", monospace; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; }

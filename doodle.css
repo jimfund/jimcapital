@@ -1,0 +1,26 @@
+* { box-sizing: border-box; }
+body { margin: 0; padding: 28px 20px; min-height: 100svh; display: grid; place-items: center; background: #fafaf8; color: #222; font-family: system-ui, sans-serif; }
+main { width: min(800px, 100%); }
+.toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.tools { display: flex; align-items: center; gap: 4px; }
+button, .toolbar a { display: grid; place-items: center; min-width: 38px; height: 38px; padding: 0 8px; border: 1px solid transparent; border-radius: 5px; color: #333; background: transparent; font: 21px system-ui, sans-serif; cursor: pointer; text-decoration: none; }
+button:hover, .toolbar a:hover { background: #eaeae6; }
+button[aria-pressed="true"] { background: #222; color: #fff; }
+button:disabled { opacity: .25; cursor: default; }
+[data-tool="number"] { font-size: 13px; }
+button:focus-visible, a:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid #828c78; outline-offset: 3px; }
+input[type="color"] { width: 32px; height: 32px; padding: 2px; border: 0; background: none; cursor: pointer; }
+input[type="range"] { width: 76px; accent-color: #333; }
+.drawing-stage { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #fff; outline: 1px solid #ddd; }
+canvas { width: 100%; height: 100%; display: block; touch-action: none; cursor: crosshair; }
+.doodle-number { position: absolute; display: block; margin: 0; transform: translate(-50%, -50%); font-family: "Courier New", monospace; font-variant-numeric: tabular-nums; line-height: 1; white-space: nowrap; user-select: none; pointer-events: none; }
+.doodle-number[hidden] { display: none; }
+.gallery { display: flex; gap: 10px; margin-top: 18px; padding: 3px; overflow-x: auto; }
+.gallery a { display: block; flex: 0 0 88px; height: 66px; background: #fff; border: 1px solid #ddd; }
+.gallery a[aria-current="page"] { border-color: #333; }
+.gallery canvas { width: 100%; height: 100%; cursor: pointer; }
+.drawing-stage[data-tool="number"] canvas { cursor: move; }
+.drawing-stage[data-tool="number"] .doodle-number { outline: 1px dashed #aaa; outline-offset: 8px; }
+#save[data-state="saved"] { color: #377a45; background: #e5eee3; }
+#save[data-state="error"] { color: #a45137; background: #f3e6df; }
+@media (max-width: 480px) { body { padding: 16px 12px; } .toolbar { justify-content: center; } }

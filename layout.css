@@ -1,0 +1,22 @@
+.site-item { flex: 0 0 auto; max-width: 100%; position: relative; transform-origin: top left; }
+.site-item > .frame, .site-item > .monitor { width: 100%; }
+.doodled-monitor { position: relative; aspect-ratio: 4 / 3; }
+.doodled-monitor canvas { display: block; width: 100%; height: 100%; }
+.doodle-number[hidden] { display: none; }
+main.layout-board { display: block; position: relative; width: min(1200px, 100%); }
+.layout-board .site-item { position: absolute; left: 0; top: 0; max-width: none; }
+body.editing { padding-top: 90px; align-items: start; }
+.editing .site-item { touch-action: none; cursor: grab; user-select: none; }
+.editing .site-item img, .editing .site-item video, .editing .site-item canvas { pointer-events: none; }
+.editing .site-item.selected { outline: 1.5px dashed #90978c; outline-offset: 8px; }
+.editing .site-item.dragging { cursor: grabbing; }
+.layout-tools { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 6px; border: 1px solid #ddd; border-radius: 8px; background: #fffffff5; box-shadow: 0 3px 16px #00000008; z-index: 20000; max-width: calc(100vw - 24px); flex-wrap: wrap; justify-content: center; }
+.layout-tools button, .layout-tools a, .edit-entry { display: grid; place-items: center; min-width: 36px; height: 36px; padding: 0 7px; border: none; border-radius: 4px; background: transparent; color: #333; text-decoration: none; font: 22px system-ui, sans-serif; cursor: pointer; }
+.layout-tools button:hover, .layout-tools a:hover, .edit-entry:hover { background: #eee; }
+.layout-tools button:disabled { opacity: .25; cursor: default; }
+.layout-tools input { width: 90px; accent-color: #333; }
+.layout-tools button:focus-visible, .layout-tools a:focus-visible, .edit-entry:focus-visible { outline: 2px solid #828c78; }
+.layout-tools [data-state="saved"] { color: #377a45; background: #e5eee3; }
+.layout-tools [data-state="error"] { color: #a45137; background: #f3e6df; }
+.edit-entry { position: fixed; right: 18px; bottom: 18px; background: #fffffff0; border: 1px solid #ddd; z-index: 20000; }
+@media (max-width: 480px) { .layout-tools { gap: 0; } .layout-tools input { width: 64px; } }

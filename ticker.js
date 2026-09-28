@@ -20,10 +20,15 @@
   const clearQuote = () => {
     monitor.dataset.state = 'offline';
     price.textContent = '—';
-    change.textContent = '—';
-    delete change.dataset.direction;
-    time.textContent = '—';
-    time.removeAttribute('datetime');
+    document.querySelectorAll('[data-spx-price]').forEach(output => { output.textContent = '—'; });
+    if (change) {
+      change.textContent = '—';
+      delete change.dataset.direction;
+    }
+    if (time) {
+      time.textContent = '—';
+      time.removeAttribute('datetime');
+    }
     tape.forEach((item) => { item.textContent = 'SPX · — · SPX · — ·'; });
   };
 
@@ -53,14 +58,19 @@
       const formatted = number.format(current);
 
       price.textContent = formatted;
-      change.textContent = Number.isFinite(percent)
-        ? `${percent < 0 ? '−' : '+'}${number.format(Math.abs(percent))}% · 24h`
-        : '—';
-      change.dataset.direction = percent < 0 ? 'down' : 'up';
+      document.querySelectorAll('[data-spx-price]').forEach(output => { output.textContent = formatted; });
+      if (change) {
+        change.textContent = Number.isFinite(percent)
+          ? `${percent < 0 ? '−' : '+'}${number.format(Math.abs(percent))}% · 24h`
+          : '—';
+        change.dataset.direction = percent < 0 ? 'down' : 'up';
+      }
       tape.forEach((item) => { item.textContent = `SPX · ${formatted} · SPX · ${formatted} ·`; });
-      const now = new Date();
-      time.dateTime = now.toISOString();
-      time.textContent = now.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false }) + ' UTC';
+      if (time) {
+        const now = new Date();
+        time.dateTime = now.toISOString();
+        time.textContent = now.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false }) + ' UTC';
+      }
       monitor.dataset.state = 'live';
     } catch {
       clearQuote();
