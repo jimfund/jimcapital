@@ -1,4 +1,18 @@
 export const WORLD = 1200;
+// Fit the occupied scene, preserving proportions and a small edge gutter.
+export function fitScene(rects, width, height, gutter = 8) {
+  if (!rects.length) return { scale: 1, x: 0, y: 0 };
+  const left = Math.min(...rects.map(r => r.x));
+  const top = Math.min(...rects.map(r => r.y));
+  const sceneWidth = Math.max(...rects.map(r => r.x + r.width)) - left;
+  const sceneHeight = Math.max(...rects.map(r => r.y + r.height)) - top;
+  const scale = Math.min(
+    Math.max(1, width - gutter * 2) / Math.max(1, sceneWidth),
+    Math.max(1, height - gutter * 2) / Math.max(1, sceneHeight),
+  );
+  return { scale, x: (width - sceneWidth * scale) / 2 - left * scale,
+    y: (height - sceneHeight * scale) / 2 - top * scale };
+}
 export const validId = value => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value || '');
 export function isLayout(value) {
   const inRange = (v, low, high) => typeof v === 'number' && Number.isFinite(v) && v >= low && v <= high;

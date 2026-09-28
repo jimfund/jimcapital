@@ -1,9 +1,11 @@
 import { drawStrokes, placeNumber, isDrawing } from './drawing.js';
-import { WORLD, isLayout, defaultPosition, validId } from './layout-model.js';
+import { WORLD, isLayout, defaultPosition, validId, fitScene } from './layout-model.js';
 
 const main = document.querySelector('main');
 export const editing = new URLSearchParams(location.search).get('edit') === '1'
   && ['localhost', '127.0.0.1'].includes(location.hostname);
+const popout = new URLSearchParams(location.search).has('popout') && !editing;
+document.body.classList.toggle('popout', popout);
 export const items = new Map();
 export let layout = { version: 1, items: {} };
 export let boardScale = 1;
@@ -80,6 +82,22 @@ export function applyLayout(next = layout) {
   layout = next;
   placed = true;
   main.classList.add('layout-board');
+  if (popout) {
+    main.style.height = '100%';
+    const rects = [...items].map(([id, item]) => {
+      const position = layout.items[id];
+      return { ...position, height: item.element.offsetHeight * position.width / item.nativeWidth };
+    });
+    const fit = fitScene(rects, main.clientWidth, main.clientHeight);
+    boardScale = fit.scale;
+    for (const [id, item] of items) {
+      const position = layout.items[id];
+      const zoom = position.width / item.nativeWidth;
+      item.element.style.transform = `translate(${fit.x + position.x * boardScale}px, ${fit.y + position.y * boardScale}px) scale(${zoom * boardScale})`;
+      item.element.style.zIndex = position.z;
+    }
+    return;
+  }
   boardScale = main.clientWidth / WORLD;
   let height = 800;
   for (const [id, item] of items) {
@@ -118,8 +136,11 @@ async function init() {
     if (validId(id)) extraIndex++;
     layout.items[id] = isLayout(saved) && saved.items[id] ? saved.items[id] : fallback;
   }
-  if (editing || (isLayout(saved) && Object.keys(saved.items).length)) applyLayout();
-  new ResizeObserver(() => { if (placed) applyLayout(); }).observe(main);
+  if (popout || editing || (isLayout(saved) && Object.keys(saved.items).length)) applyLayout();
+  const layoutObserver = new ResizeObserver(() => { if (placed) applyLayout(); });
+  layoutObserver.observe(main);
+  // Refit after images, drawings, or fonts finish sizing as well as window resizes.
+  if (popout) for (const item of items.values()) layoutObserver.observe(item.element);
   if (['localhost', '127.0.0.1'].includes(location.hostname) && !editing && !new URLSearchParams(location.search).has('popout') && window.self === window.top) {
     const link = document.createElement('a');
     link.className = 'edit-entry';
