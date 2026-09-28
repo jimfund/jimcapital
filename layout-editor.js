@@ -1,12 +1,22 @@
-import { items, layout, boardScale, applyLayout } from './site.js';
-import { constrain, isLayout } from './layout-model.js';
+import { items, layout, boardScale, applyLayout, addDoodle, removeDoodle, updateDrawing } from './site.js';
+import { WORLD, constrain, isLayout, validId } from './layout-model.js';
+import { blankDrawing, drawStrokes, isDrawing } from './drawing.js';
+import { materialize } from './inline-drawing.js';
 
 export function startEditor() {
+  const main = document.querySelector('main');
+  const overlay = document.createElement('canvas');
+  overlay.className = 'ink-overlay';
+  main.append(overlay);
   const toolbar = document.createElement('nav');
   toolbar.className = 'layout-tools';
-  toolbar.innerHTML = `<a href="doodle.html?new=1" aria-label="+">+</a>
-    <button data-action="edit" aria-label="doodle">✎</button>
-    <input type="range" min="32" max="1000" aria-label="↔">
+  toolbar.innerHTML = `<button data-action="move" aria-label="↔">↔</button>
+    <button data-action="pen" aria-label="doodle">✎</button>
+    <button data-action="eraser" aria-label="⌫">⌫</button>
+    <button data-action="new" aria-label="+">+</button>
+    <button data-action="number" aria-label="number">123</button>
+    <input type="color" value="#111111" aria-label="doodle">
+    <input type="range" min="32" max="1200" aria-label="↔">
     <button data-action="back" aria-label="↧">↧</button>
     <button data-action="front" aria-label="↥">↥</button>
     <button data-action="undo" aria-label="↶">↶</button>
@@ -15,89 +25,201 @@ export function startEditor() {
     <a href="./" aria-label="jim.capital">↗</a>`;
   document.body.append(toolbar);
   const buttons = Object.fromEntries([...toolbar.querySelectorAll('button')].map(button => [button.dataset.action, button]));
-  const size = toolbar.querySelector('input');
-  const key = 'jimcapital.layout.draft.v1';
-  const past = [];
-  const future = [];
-  let selected = 'monitor';
-  let drag;
-  let resizing = false;
+  const size = toolbar.querySelector('[type="range"]');
+  const color = toolbar.querySelector('[type="color"]');
+  const key = 'jimcapital.canvas.draft.v1';
+  const past = [], future = [];
+  let selected = 'monitor', mode = 'move', active = null;
+  let drag, inkPointer = null, stroke, resizing = false, scheduled = false;
+  let penColor = '#111111', penWidth = 3, eraserWidth = 24;
 
-  try {
-    const draft = JSON.parse(localStorage.getItem(key));
-    if (isLayout(draft)) {
-      const merged = structuredClone(layout);
-      for (const id of items.keys()) if (draft.items[id]) merged.items[id] = draft.items[id];
-      applyLayout(merged);
-    }
-  } catch {}
-
-  function draft() {
-    try { localStorage.setItem(key, JSON.stringify(layout)); } catch {}
-    delete buttons.save.dataset.state;
+  function scene() {
+    return { version: 1, layout: structuredClone(layout), drawings: Object.fromEntries([...items].filter(([, item]) => item.drawing).map(([id, item]) => [id, structuredClone(item.drawing)])) };
   }
-  function controls() {
-    for (const [id, item] of items) item.element.classList.toggle('selected', id === selected);
-    size.value = layout.items[selected].width;
-    buttons.edit.disabled = !items.get(selected).doodle;
-    buttons.undo.disabled = !past.length;
-    buttons.redo.disabled = !future.length;
-  }
+  function snapshot() { return { ...scene(), selected, mode, active: structuredClone(active) }; }
   function remember() {
-    past.push(structuredClone(layout));
-    if (past.length > 60) past.shift();
+    past.push(snapshot());
+    if (past.length > 40) past.shift();
     future.length = 0;
     delete buttons.save.dataset.state;
   }
-  function openDrawing(id) {
-    if (!items.get(id).doodle) return;
-    location.href = id === 'monitor' ? 'doodle.html' : `doodle.html?id=${id}`;
+  function draft() {
+    try { localStorage.setItem(key, JSON.stringify(snapshot())); } catch {}
+    delete buttons.save.dataset.state;
   }
-  for (const [id, item] of items) {
-    item.element.addEventListener('dragstart', event => event.preventDefault());
-    item.element.addEventListener('click', event => event.preventDefault());
-    item.element.addEventListener('dblclick', () => openDrawing(id));
-    item.element.addEventListener('pointerdown', event => {
-      if (event.button !== 0 || drag) return;
-      event.preventDefault();
+  function controls() {
+    main.dataset.mode = mode;
+    for (const [id, item] of items) item.element.classList.toggle('selected', id === selected && (mode === 'move' || active?.kind === 'existing'));
+    for (const tool of ['move', 'pen', 'eraser', 'number']) buttons[tool].setAttribute('aria-pressed', String(mode === tool));
+    buttons.number.disabled = !items.get(selected)?.drawing;
+    buttons.back.disabled = buttons.front.disabled = mode !== 'move';
+    buttons.undo.disabled = !past.length;
+    buttons.redo.disabled = !future.length;
+    color.disabled = mode === 'move' || mode === 'eraser';
+    color.value = mode === 'number' ? items.get(selected).drawing.number.color : penColor;
+    size.min = mode === 'move' ? 32 : mode === 'number' ? 14 : 1;
+    size.max = mode === 'move' ? WORLD : mode === 'number' ? 120 : mode === 'eraser' ? 80 : 32;
+    size.value = mode === 'move' ? layout.items[selected].width : mode === 'number' ? items.get(selected).drawing.number.size : mode === 'eraser' ? eraserWidth : penWidth;
+  }
+  function renderOverlay() {
+    const height = Math.max(1, main.clientHeight / boardScale);
+    const drawing = blankDrawing();
+    drawing.aspect = WORLD / height;
+    drawing.strokes = active?.kind === 'new' ? active.strokes.map(s => ({ ...s, width: s.width * 800 / WORLD, points: s.points.map(([x, y]) => [x / WORLD, y / height]) })) : [];
+    drawStrokes(overlay, drawing);
+  }
+  function renderInk() {
+    if (active?.kind === 'existing') updateDrawing(active.id, items.get(active.id).drawing);
+    renderOverlay();
+  }
+  function scheduleRender() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(() => { scheduled = false; renderInk(); });
+  }
+  function finishNew() {
+    if (active?.kind !== 'new') return;
+    const result = materialize(active.strokes);
+    if (result) {
+      const id = crypto.randomUUID();
+      result.position.z = Math.min(10000, Math.max(...Object.values(layout.items).map(p => p.z)) + 1);
+      attach(addDoodle(id, result.drawing, result.position));
       selected = id;
-      remember();
-      drag = { id, pointer: event.pointerId, x: event.pageX, y: event.pageY, start: { ...layout.items[id] }, scale: boardScale };
-      item.element.setPointerCapture(event.pointerId);
-      item.element.classList.add('dragging');
-      controls();
+      applyLayout();
+    }
+    active = null;
+    renderOverlay();
+  }
+  function restore(saved) {
+    if (!isLayout(saved.layout) || !saved.drawings || !isDrawing(saved.drawings.monitor)) return false;
+    if (!Object.entries(saved.drawings).every(([id, d]) => (id === 'monitor' || validId(id)) && isDrawing(d) && saved.layout.items[id])) return false;
+    if (saved.active?.kind === 'new' && !Array.isArray(saved.active.strokes)) return false;
+    for (const [id, item] of items) if (item.doodle && id !== 'monitor' && !saved.drawings[id]) removeDoodle(id);
+    for (const [id, drawing] of Object.entries(saved.drawings)) {
+      if (items.has(id)) updateDrawing(id, structuredClone(drawing));
+      else attach(addDoodle(id, structuredClone(drawing), saved.layout.items[id]));
+    }
+    applyLayout(structuredClone(saved.layout));
+    selected = items.has(saved.selected) ? saved.selected : 'monitor';
+    mode = ['move', 'pen', 'eraser', 'number'].includes(saved.mode) ? saved.mode : 'move';
+    active = structuredClone(saved.active || null);
+    controls(); renderOverlay();
+    return true;
+  }
+  function attach(item) {
+    const { id, element } = item;
+    element.addEventListener('dragstart', e => e.preventDefault());
+    element.addEventListener('click', e => e.preventDefault());
+    element.addEventListener('dblclick', () => {
+      if (!item.drawing || mode !== 'move') return;
+      selected = id; active = { kind: 'existing', id }; mode = 'pen';
+      controls(); renderOverlay();
     });
-    item.element.addEventListener('pointermove', event => {
-      if (!drag || drag.id !== id || drag.pointer !== event.pointerId) return;
-      layout.items[id] = constrain({ ...drag.start, x: drag.start.x + (event.pageX - drag.x) / drag.scale, y: drag.start.y + (event.pageY - drag.y) / drag.scale });
+    element.addEventListener('pointerdown', e => {
+      if (e.button !== 0 || drag || mode !== 'move') return;
+      e.preventDefault(); selected = id; remember();
+      drag = { id, pointer: e.pointerId, x: e.pageX, y: e.pageY, start: { ...layout.items[id] }, scale: boardScale };
+      element.setPointerCapture(e.pointerId);
+      element.classList.add('dragging'); controls();
+    });
+    element.addEventListener('pointermove', e => {
+      if (!drag || drag.id !== id || drag.pointer !== e.pointerId) return;
+      layout.items[id] = constrain({ ...drag.start, x: drag.start.x + (e.pageX - drag.x) / drag.scale, y: drag.start.y + (e.pageY - drag.y) / drag.scale });
       applyLayout();
     });
-    const finish = event => {
-      if (!drag || drag.id !== id || drag.pointer !== event.pointerId) return;
+    const finish = e => {
+      if (!drag || drag.id !== id || drag.pointer !== e.pointerId) return;
       drag = null;
-      if (item.element.hasPointerCapture(event.pointerId)) item.element.releasePointerCapture(event.pointerId);
-      item.element.classList.remove('dragging');
-      draft(); controls();
+      if (element.hasPointerCapture(e.pointerId)) element.releasePointerCapture(e.pointerId);
+      element.classList.remove('dragging'); draft(); controls();
     };
-    item.element.addEventListener('pointerup', finish);
-    item.element.addEventListener('pointercancel', finish);
-    item.element.addEventListener('lostpointercapture', finish);
+    for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) element.addEventListener(event, finish);
   }
+  for (const item of items.values()) attach(item);
+
+  function inkPoint(e) {
+    if (active.kind === 'existing') {
+      const rect = items.get(active.id).element.getBoundingClientRect();
+      return [Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)), Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height))];
+    }
+    const rect = main.getBoundingClientRect();
+    return [Math.max(0, Math.min(WORLD, (e.clientX - rect.left) / boardScale)), Math.max(0, Math.min(6900, (e.clientY - rect.top) / boardScale))];
+  }
+  function addPoint(e) {
+    const point = inkPoint(e);
+    if (mode === 'number') {
+      const number = items.get(active.id).drawing.number;
+      number.x = Math.max(.05, Math.min(.95, point[0])); number.y = Math.max(.05, Math.min(.95, point[1]));
+      return;
+    }
+    if (stroke.points.length >= 20000) return;
+    const last = stroke.points.at(-1);
+    const threshold = active.kind === 'new' ? .5 : .001;
+    if (!last || Math.hypot(point[0] - last[0], point[1] - last[1]) > threshold) stroke.points.push(point);
+  }
+  overlay.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || inkPointer !== null || mode === 'move') return;
+    e.preventDefault(); remember();
+    if (!active) active = { kind: 'new', strokes: [] };
+    const strokes = active.kind === 'new' ? active.strokes : items.get(active.id).drawing.strokes;
+    if (strokes.length >= 2000) return;
+    inkPointer = e.pointerId; overlay.setPointerCapture(inkPointer);
+    if (mode !== 'number') {
+      const width = mode === 'eraser' ? eraserWidth : penWidth;
+      stroke = { tool: mode === 'eraser' ? 'eraser' : 'pen', color: penColor, width: active.kind === 'new' ? width : Math.min(1600, width * 800 / layout.items[active.id].width), points: [] };
+      strokes.push(stroke);
+    }
+    addPoint(e); scheduleRender(); controls();
+  });
+  overlay.addEventListener('pointermove', e => {
+    if (e.pointerId !== inkPointer) return;
+    const coalesced = e.getCoalescedEvents?.() || [];
+    for (const sample of coalesced.length ? coalesced : [e]) addPoint(sample);
+    scheduleRender();
+  });
+  const endInk = e => {
+    if (e.pointerId !== inkPointer) return;
+    if (e.type === 'pointerup') addPoint(e);
+    inkPointer = null;
+    if (overlay.hasPointerCapture(e.pointerId)) overlay.releasePointerCapture(e.pointerId);
+    renderInk(); draft(); controls();
+  };
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) overlay.addEventListener(event, endInk);
+
+  buttons.move.addEventListener('click', () => { finishNew(); active = null; mode = 'move'; controls(); draft(); });
+  buttons.pen.addEventListener('click', () => { if (mode === 'move') active = { kind: 'new', strokes: [] }; mode = 'pen'; controls(); });
+  buttons.new.addEventListener('click', () => { finishNew(); active = { kind: 'new', strokes: [] }; mode = 'pen'; controls(); draft(); });
+  buttons.eraser.addEventListener('click', () => {
+    if (!active && items.get(selected).drawing) active = { kind: 'existing', id: selected };
+    if (active) { mode = 'eraser'; controls(); }
+  });
+  buttons.number.addEventListener('click', () => {
+    finishNew();
+    if (!items.get(selected).drawing) return;
+    remember(); active = { kind: 'existing', id: selected }; mode = 'number';
+    items.get(selected).drawing.number.enabled = true;
+    updateDrawing(selected, items.get(selected).drawing); controls(); draft();
+  });
+  color.addEventListener('input', () => {
+    if (mode === 'number') { remember(); items.get(selected).drawing.number.color = color.value; renderInk(); draft(); }
+    else penColor = color.value;
+  });
   size.addEventListener('input', () => {
-    if (!resizing) { remember(); resizing = true; }
-    layout.items[selected] = constrain({ ...layout.items[selected], width: Number(size.value) });
-    applyLayout(); draft(); controls();
+    if (mode === 'move' || mode === 'number') {
+      if (!resizing) { remember(); resizing = true; }
+      if (mode === 'move') { layout.items[selected] = constrain({ ...layout.items[selected], width: Number(size.value) }); applyLayout(); }
+      else { items.get(selected).drawing.number.size = Number(size.value); renderInk(); }
+      draft(); controls();
+    } else if (mode === 'eraser') eraserWidth = Number(size.value);
+    else penWidth = Number(size.value);
   });
   size.addEventListener('change', () => { resizing = false; });
   function step(from, to) {
-    if (!from.length || drag) return;
-    to.push(structuredClone(layout));
-    applyLayout(from.pop());
-    draft(); controls();
+    if (!from.length || drag || inkPointer !== null) return;
+    to.push(snapshot()); restore(from.pop()); draft(); controls();
   }
   buttons.undo.addEventListener('click', () => step(past, future));
   buttons.redo.addEventListener('click', () => step(future, past));
-  buttons.edit.addEventListener('click', () => openDrawing(selected));
   for (const direction of ['front', 'back']) buttons[direction].addEventListener('click', () => {
     remember();
     const order = Object.keys(layout.items).filter(id => id !== selected).sort((a, b) => layout.items[a].z - layout.items[b].z);
@@ -106,33 +228,43 @@ export function startEditor() {
     applyLayout(); draft(); controls();
   });
   buttons.save.addEventListener('click', async () => {
-    const serialized = JSON.stringify(layout);
+    finishNew(); active = null; mode = 'move'; controls();
+    const serialized = JSON.stringify(scene());
     buttons.save.disabled = true;
     try {
-      const response = await fetch('/__layout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: serialized, signal: AbortSignal.timeout(8000) });
+      const response = await fetch('/__scene', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: serialized, signal: AbortSignal.timeout(15000) });
       if (!response.ok) throw new Error();
-      if (JSON.stringify(layout) === serialized) {
+      if (JSON.stringify(scene()) === serialized && !active?.strokes?.length) {
         buttons.save.dataset.state = 'saved';
-        try { localStorage.removeItem(key); } catch {}
+        try { localStorage.removeItem(key); localStorage.removeItem('jimcapital.layout.draft.v1'); } catch {}
       }
-    } catch { buttons.save.dataset.state = 'error'; }
+    } catch { draft(); buttons.save.dataset.state = 'error'; }
     finally { buttons.save.disabled = false; }
   });
-  document.addEventListener('keydown', event => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-      event.preventDefault();
-      if (event.shiftKey) step(future, past); else step(past, future);
-    } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key) && event.target.tagName !== 'INPUT') {
-      event.preventDefault(); remember();
-      const amount = event.shiftKey ? 20 : 5;
-      const position = { ...layout.items[selected] };
-      if (event.key === 'ArrowLeft') position.x -= amount;
-      if (event.key === 'ArrowRight') position.x += amount;
-      if (event.key === 'ArrowUp') position.y -= amount;
-      if (event.key === 'ArrowDown') position.y += amount;
-      layout.items[selected] = constrain(position);
-      applyLayout(); draft(); controls();
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && inkPointer === null) buttons.move.click();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      e.preventDefault(); if (e.shiftKey) step(future, past); else step(past, future);
+    } else if (mode === 'move' && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key) && e.target.tagName !== 'INPUT') {
+      e.preventDefault(); remember();
+      const amount = e.shiftKey ? 20 : 5, position = { ...layout.items[selected] };
+      if (e.key === 'ArrowLeft') position.x -= amount;
+      if (e.key === 'ArrowRight') position.x += amount;
+      if (e.key === 'ArrowUp') position.y -= amount;
+      if (e.key === 'ArrowDown') position.y += amount;
+      layout.items[selected] = constrain(position); applyLayout(); draft(); controls();
     }
   });
-  controls();
+  try {
+    const saved = JSON.parse(localStorage.getItem(key));
+    if (!saved || !restore(saved)) {
+      const previous = JSON.parse(localStorage.getItem('jimcapital.layout.draft.v1'));
+      if (isLayout(previous)) {
+        for (const id of items.keys()) if (previous.items[id]) layout.items[id] = previous.items[id];
+        applyLayout();
+      }
+    }
+  } catch {}
+  new ResizeObserver(renderOverlay).observe(main);
+  controls(); renderOverlay();
 }

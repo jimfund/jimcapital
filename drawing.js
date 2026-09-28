@@ -8,19 +8,26 @@ export function isDrawing(value) {
   const range = (n, low, high) => typeof n === 'number' && Number.isFinite(n) && n >= low && n <= high;
   const color = (c) => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c);
   return value?.version === 1 && Array.isArray(value.strokes) && value.strokes.length <= 2000
+    && (value.aspect === undefined || range(value.aspect, .05, 20))
     && range(value.number?.x, 0, 1) && range(value.number?.y, 0, 1)
     && range(value.number?.size, 14, 120) && color(value.number?.color)
     && (value.number.enabled === undefined || typeof value.number.enabled === 'boolean')
     && value.strokes.every(s => s && ['pen', 'eraser'].includes(s.tool) && color(s.color)
-      && range(s.width, 1, 80) && Array.isArray(s.points) && s.points.length <= 20000
+      && range(s.width, .01, 1600) && Array.isArray(s.points) && s.points.length <= 20000
       && s.points.every(p => Array.isArray(p) && p.length === 2 && range(p[0], 0, 1) && range(p[1], 0, 1)))
     && value.strokes.reduce((n, s) => n + s.points.length, 0) <= 100000;
 }
 
 export function drawStrokes(canvas, drawing) {
+  const height = 800 / (drawing.aspect || 4 / 3);
+  const scale = Math.min(2, 2400 / height);
+  const pixelWidth = Math.round(800 * scale);
+  const pixelHeight = Math.round(height * scale);
+  if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
+  if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
   const ctx = canvas.getContext('2d');
-  ctx.setTransform(2, 0, 0, 2, 0, 0);
-  ctx.clearRect(0, 0, 800, 600);
+  ctx.setTransform(scale, 0, 0, scale, 0, 0);
+  ctx.clearRect(0, 0, 800, height);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   for (const stroke of drawing.strokes) {
@@ -32,12 +39,12 @@ export function drawStrokes(canvas, drawing) {
     ctx.lineWidth = stroke.width;
     ctx.beginPath();
     if (points.length === 1) {
-      ctx.arc(points[0][0] * 800, points[0][1] * 600, stroke.width / 2, 0, Math.PI * 2);
+      ctx.arc(points[0][0] * 800, points[0][1] * height, stroke.width / 2, 0, Math.PI * 2);
       ctx.fill();
       continue;
     }
-    ctx.moveTo(points[0][0] * 800, points[0][1] * 600);
-    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0] * 800, points[i][1] * 600);
+    ctx.moveTo(points[0][0] * 800, points[0][1] * height);
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0] * 800, points[i][1] * height);
     ctx.stroke();
   }
   ctx.globalCompositeOperation = 'source-over';

@@ -3,37 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="refresh" content="0;url=./?edit=1">
     <title>jim.capital</title>
-    <link rel="stylesheet" href="doodle.css">
   </head>
-  <body>
-    <main>
-      <div class="toolbar">
-        <div class="tools">
-          <button type="button" data-tool="pen" aria-label="doodle" aria-pressed="true">✎</button>
-          <button type="button" data-tool="eraser" aria-label="⌫" aria-pressed="false">⌫</button>
-          <button type="button" data-tool="number" aria-label="number" aria-pressed="false">123</button>
-          <input id="ink" type="color" value="#111111" aria-label="doodle">
-          <input id="size" type="range" min="1" max="48" value="4" aria-label="doodle">
-        </div>
-        <div class="tools">
-          <button id="new-doodle" type="button" aria-label="+">+</button>
-          <button id="undo" type="button" aria-label="↶" disabled>↶</button>
-          <button id="redo" type="button" aria-label="↷" disabled>↷</button>
-          <button id="clear" type="button" aria-label="×">×</button>
-          <button id="save" type="button" aria-label="✓">✓</button>
-          <button id="download" type="button" aria-label="↓">↓</button>
-          <a href="./" aria-label="jim.capital">↗</a>
-          <a href="./?edit=1" aria-label="↔">↔</a>
-        </div>
-      </div>
-      <section class="monitor drawing-stage" data-tool="pen" aria-label="doodle">
-        <canvas id="drawing" width="1600" height="1200" tabindex="0" aria-label="doodle"></canvas>
-        <output id="spx-price" class="doodle-number">—</output>
-      </section>
-      <nav class="gallery" aria-label="doodles"></nav>
-    </main>
-    <script src="ticker.js" defer></script>
-    <script src="doodle.js" type="module"></script>
-  </body>
+  <body></body>
 </html>

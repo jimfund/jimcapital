@@ -17,14 +17,15 @@ async function read(path, fallback) {
 }
 
 function mountDrawing(target, drawing, output) {
-  const canvas = document.createElement('canvas');
+  const canvas = target.querySelector('canvas') || document.createElement('canvas');
   canvas.width = 1600;
   canvas.height = 1200;
   canvas.setAttribute('aria-hidden', 'true');
   target.replaceChildren(canvas);
   target.classList.add('doodled-monitor');
+  target.style.aspectRatio = String(drawing.aspect || 4 / 3);
   drawStrokes(canvas, drawing);
-  if (drawing.number.enabled !== false) {
+  if (drawing.number.enabled !== false || output?.id === 'spx-price') {
     if (!output) {
       output = document.createElement('output');
       output.dataset.spxPrice = '';
@@ -33,7 +34,9 @@ function mountDrawing(target, drawing, output) {
     output.className = 'doodle-number';
     target.append(output);
     const resize = () => placeNumber(target, output, drawing);
-    new ResizeObserver(resize).observe(target);
+    target.drawingObserver?.disconnect();
+    target.drawingObserver = new ResizeObserver(resize);
+    target.drawingObserver.observe(target);
     resize();
   }
 }
@@ -47,7 +50,30 @@ function addItem(id, content, nativeWidth, doodle = false) {
   else main.append(wrapper);
   wrapper.append(content);
   content.style.width = '100%';
-  items.set(id, { id, element: wrapper, nativeWidth, doodle });
+  items.set(id, { id, element: wrapper, content, nativeWidth, doodle });
+}
+
+export function updateDrawing(id, drawing) {
+  const item = items.get(id);
+  item.drawing = drawing;
+  const output = item.content.querySelector('output');
+  mountDrawing(item.content, drawing, output);
+}
+
+export function addDoodle(id, drawing, position) {
+  const content = document.createElement('section');
+  addItem(id, content, 400, true);
+  updateDrawing(id, drawing);
+  layout.items[id] = position;
+  return items.get(id);
+}
+
+export function removeDoodle(id) {
+  if (!items.get(id)?.doodle || id === 'monitor') return;
+  items.get(id).content.drawingObserver?.disconnect();
+  items.get(id).element.remove();
+  items.delete(id);
+  delete layout.items[id];
 }
 
 export function applyLayout(next = layout) {
@@ -75,6 +101,7 @@ async function init() {
   addItem('prediction', main.querySelector('img'), 105);
   addItem('angel', main.querySelector('.frame'), 316);
   addItem('monitor', monitor, 400, true);
+  if (isDrawing(monitorDrawing)) items.get('monitor').drawing = monitorDrawing;
   const ids = Array.isArray(manifest.ids) ? [...new Set(manifest.ids.filter(validId))].slice(0, 100) : [];
   const drawings = await Promise.all(ids.map(id => read(`assets/doodles/${id}.json`, null)));
   for (let i = 0; i < ids.length; i++) {
@@ -82,6 +109,7 @@ async function init() {
     const content = document.createElement('section');
     mountDrawing(content, drawings[i]);
     addItem(ids[i], content, 400, true);
+    items.get(ids[i]).drawing = drawings[i];
   }
   let extraIndex = 0;
   for (const [id] of items) {

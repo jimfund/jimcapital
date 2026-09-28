@@ -6,10 +6,10 @@ export function isLayout(value) {
     && Object.keys(value.items).length <= 103
     && Object.entries(value.items).every(([id, item]) => (['prediction', 'angel', 'monitor'].includes(id) || validId(id))
       && item && inRange(item.x, 0, WORLD) && inRange(item.y, 0, 6000)
-      && inRange(item.width, 32, 1000) && inRange(item.z, 0, 10000) && item.x + item.width <= WORLD + .001);
+      && inRange(item.width, 32, WORLD) && inRange(item.z, 0, 10000) && item.x + item.width <= WORLD + .001);
 }
 export function constrain(item) {
-  const width = Math.max(32, Math.min(1000, item.width));
+  const width = Math.max(32, Math.min(WORLD, item.width));
   return { ...item, width, x: Math.max(0, Math.min(WORLD - width, item.x)), y: Math.max(0, Math.min(6000, item.y)) };
 }
 export function defaultPosition(id, index) {

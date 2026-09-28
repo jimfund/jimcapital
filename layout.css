@@ -4,6 +4,7 @@
 .doodled-monitor canvas { display: block; width: 100%; height: 100%; }
 .doodle-number[hidden] { display: none; }
 main.layout-board { display: block; position: relative; width: min(1200px, 100%); }
+main.layout-board { isolation: isolate; }
 .layout-board .site-item { position: absolute; left: 0; top: 0; max-width: none; }
 body.editing { padding-top: 90px; align-items: start; }
 .editing .site-item { touch-action: none; cursor: grab; user-select: none; }
@@ -18,5 +19,12 @@ body.editing { padding-top: 90px; align-items: start; }
 .layout-tools button:focus-visible, .layout-tools a:focus-visible, .edit-entry:focus-visible { outline: 2px solid #828c78; }
 .layout-tools [data-state="saved"] { color: #377a45; background: #e5eee3; }
 .layout-tools [data-state="error"] { color: #a45137; background: #f3e6df; }
+.layout-tools button[aria-pressed="true"] { background: #252525; color: white; }
+.layout-tools [data-action="number"] { font-size: 12px; }
+.layout-tools input[type="color"] { width: 30px; height: 30px; padding: 2px; border: 0; background: none; }
+.ink-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 15000; touch-action: none; pointer-events: none; }
+.layout-board[data-mode="pen"] .ink-overlay, .layout-board[data-mode="eraser"] .ink-overlay { pointer-events: auto; cursor: crosshair; }
+.layout-board[data-mode="number"] .ink-overlay { pointer-events: auto; cursor: move; }
 .edit-entry { position: fixed; right: 18px; bottom: 18px; background: #fffffff0; border: 1px solid #ddd; z-index: 20000; }
 @media (max-width: 480px) { .layout-tools { gap: 0; } .layout-tools input { width: 64px; } }
+@media (max-width: 650px) { body.editing { padding-top: 125px; } }

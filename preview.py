@@ -23,6 +23,8 @@ def valid_drawing(data):
 
     if not isinstance(data, dict) or data.get("version") != 1:
         return False
+    if "aspect" in data and not number(data["aspect"], .05, 20):
+        return False
     position = data.get("number")
     strokes = data.get("strokes")
     if not isinstance(position, dict) or not isinstance(strokes, list) or len(strokes) > 2000:
@@ -37,7 +39,7 @@ def valid_drawing(data):
     for stroke in strokes:
         if not isinstance(stroke, dict) or stroke.get("tool") not in ("pen", "eraser"):
             return False
-        if not color(stroke.get("color")) or not number(stroke.get("width"), 1, 80):
+        if not color(stroke.get("color")) or not number(stroke.get("width"), .01, 1600):
             return False
         points = stroke.get("points")
         if not isinstance(points, list) or len(points) > 20000:
@@ -62,13 +64,28 @@ def valid_layout(data):
             return False
         if not isinstance(item, dict):
             return False
-        for field, low, high in (("x", 0, 1200), ("y", 0, 6000), ("width", 32, 1000), ("z", 0, 10000)):
+        for field, low, high in (("x", 0, 1200), ("y", 0, 6000), ("width", 32, 1200), ("z", 0, 10000)):
             value = item.get(field)
             if type(value) not in (int, float) or not math.isfinite(value) or not low <= value <= high:
                 return False
         if item["x"] + item["width"] > 1200.001:
             return False
     return True
+
+
+def valid_scene(data):
+    if not isinstance(data, dict) or data.get("version") != 1 or not valid_layout(data.get("layout")):
+        return False
+    drawings = data.get("drawings")
+    if not isinstance(drawings, dict) or "monitor" not in drawings or len(drawings) > 101:
+        return False
+    for key, drawing in drawings.items():
+        if key != "monitor" and not DOODLE_ID.fullmatch(key):
+            return False
+        if key not in data["layout"]["items"] or not valid_drawing(drawing):
+            return False
+    expected = {"prediction", "angel"} | set(drawings)
+    return set(data["layout"]["items"]) == expected
 
 
 def atomic_json(destination, data):
@@ -88,7 +105,7 @@ def atomic_json(destination, data):
 class PreviewHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         drawing_id = self.path.removeprefix("/__doodles/") if self.path.startswith("/__doodles/") else None
-        if self.path not in ("/__doodle", "/__layout") and (not drawing_id or not DOODLE_ID.fullmatch(drawing_id)):
+        if self.path not in ("/__doodle", "/__layout", "/__scene") and (not drawing_id or not DOODLE_ID.fullmatch(drawing_id)):
             self.send_error(404)
             return
         port = self.server.server_port
@@ -102,11 +119,13 @@ class PreviewHandler(SimpleHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", 0))
-            if not 0 < length <= 2_000_000:
+            limit = 16_000_000 if self.path == "/__scene" else 2_000_000
+            if not 0 < length <= limit:
                 self.send_error(413)
                 return
             data = json.loads(self.rfile.read(length))
-            if not (valid_layout(data) if self.path == "/__layout" else valid_drawing(data)):
+            validator = valid_scene if self.path == "/__scene" else valid_layout if self.path == "/__layout" else valid_drawing
+            if not validator(data):
                 self.send_error(400)
                 return
         except (ValueError, TypeError, OverflowError):
@@ -115,7 +134,13 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         assets = Path(self.directory) / "assets"
         try:
             with SAVE_LOCK:
-                if drawing_id:
+                if self.path == "/__scene":
+                    for key, drawing in data["drawings"].items():
+                        path = assets / "monitor-doodle.json" if key == "monitor" else assets / "doodles" / f"{key}.json"
+                        atomic_json(path, drawing)
+                    atomic_json(assets / "doodles.json", {"version": 1, "ids": [key for key in data["drawings"] if key != "monitor"]})
+                    atomic_json(assets / "layout.json", data["layout"])
+                elif drawing_id:
                     manifest_path = assets / "doodles.json"
                     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {"version": 1, "ids": []}
                     if drawing_id not in manifest["ids"] and len(manifest["ids"]) >= 100:
