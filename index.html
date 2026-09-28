@@ -65,164 +65,8 @@
         width: 100%;
         box-shadow: 0 0 0 2px #5b390e, 0 0 0 4px #f5d886;
       }
-      .monitor {
-        flex: 0 1 380px;
-        min-width: 0;
-        padding-bottom: 32px;
-        position: relative;
-      }
-      .monitor::before,
-      .monitor::after {
-        content: "";
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(90deg, #a7a391, #dedacc 45%, #b8b4a3);
-      }
-      .monitor::before {
-        bottom: 9px;
-        width: 100px;
-        height: 30px;
-      }
-      .monitor::after {
-        bottom: 0;
-        width: 190px;
-        height: 14px;
-        border-radius: 50% 50% 5px 5px;
-        box-shadow: 0 5px 8px #0002;
-      }
-      .cabinet {
-        position: relative;
-        z-index: 1;
-        padding: 24px 22px 16px;
-        border: 1px solid #aaa795;
-        border-radius: 18px 18px 12px 12px;
-        background: linear-gradient(125deg, #eeeadd, #d0ccbb 65%, #bbb7a7);
-        box-shadow: inset 2px 3px 2px #fff9, inset -3px -4px 2px #88857066, 7px 12px 22px #0002;
-      }
-      .bezel {
-        padding: 12px;
-        border-radius: 48% / 7%;
-        background: #777667;
-        box-shadow: inset 4px 5px 7px #32332e, 0 2px 1px #fff9;
-      }
-      .screen {
-        position: relative;
-        overflow: hidden;
-        min-width: 0;
-        border-radius: 48% / 7%;
-        padding: 22px 16px 18px;
-        color: #93ff9b;
-        background: radial-gradient(ellipse at center, #143523, #05110c 85%);
-        box-shadow: inset 0 0 24px #000;
-        font-family: "Courier New", monospace;
-        font-variant-numeric: tabular-nums;
-        text-shadow: 0 0 7px #72ff9399;
-      }
-      .screen::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        background: repeating-linear-gradient(0deg, #0002 0 1px, transparent 1px 3px);
-        box-shadow: inset 0 0 18px #0008;
-      }
-      .screen-meta {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        gap: 8px;
-      }
-      .symbol {
-        font-size: 20px;
-        letter-spacing: 3px;
-      }
-      .market {
-        color: inherit;
-        font-size: 11px;
-        text-decoration: none;
-      }
-      .market:focus-visible {
-        outline: 1px solid currentColor;
-        outline-offset: 4px;
-      }
-      .price {
-        display: block;
-        margin: 27px 0 10px;
-        font-size: clamp(26px, 7vw, 42px);
-        letter-spacing: -2px;
-        line-height: 1;
-      }
-      .change {
-        font-size: 14px;
-        min-height: 17px;
-      }
-      .change[data-direction="down"] {
-        color: #ffd085;
-      }
-      .ticker {
-        overflow: hidden;
-        margin: 23px -16px 16px;
-        padding: 8px 0;
-        border-block: 1px solid #93ff9b44;
-        font-size: 13px;
-        white-space: nowrap;
-      }
-      .ticker-track {
-        display: flex;
-        width: max-content;
-        animation: ticker-scroll 18s linear infinite;
-      }
-      .ticker-track span {
-        padding-right: 32px;
-      }
-      .quote-time {
-        display: block;
-        min-height: 12px;
-        text-align: right;
-        font-size: 10px;
-      }
-      .monitor-controls {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 16px 6px 0;
-      }
-      .vents {
-        width: 80px;
-        height: 10px;
-        background: repeating-linear-gradient(90deg, #777567 0 2px, transparent 2px 5px);
-      }
-      .power {
-        width: 22px;
-        height: 13px;
-        border: 1px solid #8b8779;
-        border-radius: 3px;
-        background: #bbb7a5;
-        box-shadow: inset 1px 1px 2px #fff9;
-        position: relative;
-      }
-      .power::after {
-        content: "";
-        position: absolute;
-        width: 5px;
-        height: 5px;
-        top: 3px;
-        left: -15px;
-        border-radius: 50%;
-        background: #b28a32;
-      }
-      .monitor[data-state="live"] .power::after {
-        background: #78d45c;
-        box-shadow: 0 0 4px #78d45c;
-      }
-      @keyframes ticker-scroll {
-        to { transform: translateX(-50%); }
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .ticker-track { animation: none; }
-      }
     </style>
+    <link rel="stylesheet" href="monitor.css">
   </head>
   <body>
     <main>
@@ -232,7 +76,7 @@
           <source src="assets/angel-prayers.mp4" type="video/mp4">
         </video>
       </div>
-      <section class="monitor" data-state="pending" aria-label="SPX">
+      <section class="monitor" data-design="1" data-state="pending" aria-label="SPX">
         <div class="cabinet">
           <div class="bezel">
             <div class="screen">
@@ -258,6 +102,12 @@
         </div>
       </section>
     </main>
+    <script>
+      const design = new URLSearchParams(location.search).get("crt");
+      if (["1", "2", "3"].includes(design)) {
+        document.querySelector(".monitor").dataset.design = design;
+      }
+    </script>
     <script src="ticker.js" defer></script>
   </body>
 </html>
