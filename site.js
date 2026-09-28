@@ -101,6 +101,7 @@ async function init() {
   addItem('prediction', main.querySelector('img'), 105);
   addItem('angel', main.querySelector('.frame'), 316);
   addItem('monitor', monitor, 400, true);
+  addItem('softbank', main.querySelector('.softbank-tracker'), 300);
   if (isDrawing(monitorDrawing)) items.get('monitor').drawing = monitorDrawing;
   const ids = Array.isArray(manifest.ids) ? [...new Set(manifest.ids.filter(validId))].slice(0, 100) : [];
   const drawings = await Promise.all(ids.map(id => read(`assets/doodles/${id}.json`, null)));

@@ -19,6 +19,7 @@ export function startEditor() {
     <input type="range" min="32" max="1200" aria-label="↔">
     <button data-action="back" aria-label="↧">↧</button>
     <button data-action="front" aria-label="↥">↥</button>
+    <button data-action="delete" aria-label="Delete selected doodle" title="Delete selected doodle (Delete)">Delete</button>
     <button data-action="undo" aria-label="↶">↶</button>
     <button data-action="redo" aria-label="↷">↷</button>
     <button data-action="save" aria-label="✓">✓</button>
@@ -53,6 +54,7 @@ export function startEditor() {
     for (const tool of ['move', 'pen', 'eraser', 'number']) buttons[tool].setAttribute('aria-pressed', String(mode === tool));
     buttons.number.disabled = !items.get(selected)?.drawing;
     buttons.back.disabled = buttons.front.disabled = mode !== 'move';
+    buttons.delete.disabled = !canDelete();
     buttons.undo.disabled = !past.length;
     buttons.redo.disabled = !future.length;
     color.disabled = mode === 'move' || mode === 'eraser';
@@ -99,7 +101,10 @@ export function startEditor() {
       if (items.has(id)) updateDrawing(id, structuredClone(drawing));
       else attach(addDoodle(id, structuredClone(drawing), saved.layout.items[id]));
     }
-    applyLayout(structuredClone(saved.layout));
+    const restoredLayout = structuredClone(saved.layout);
+    // Drafts from before the 9984 tracker was added have no position for it.
+    restoredLayout.items.softbank ||= structuredClone(layout.items.softbank);
+    applyLayout(restoredLayout);
     selected = items.has(saved.selected) ? saved.selected : 'monitor';
     mode = ['move', 'pen', 'eraser', 'number'].includes(saved.mode) ? saved.mode : 'move';
     active = structuredClone(saved.active || null);
@@ -220,6 +225,18 @@ export function startEditor() {
   }
   buttons.undo.addEventListener('click', () => step(past, future));
   buttons.redo.addEventListener('click', () => step(future, past));
+  function canDelete() {
+    return items.get(selected)?.doodle && selected !== 'monitor'
+      && active?.kind !== 'new' && !drag && inkPointer === null;
+  }
+  function deleteSelected() {
+    if (!canDelete()) return;
+    remember();
+    removeDoodle(selected);
+    selected = 'monitor'; active = null; mode = 'move'; resizing = false;
+    applyLayout(); renderOverlay(); draft(); controls();
+  }
+  buttons.delete.addEventListener('click', deleteSelected);
   for (const direction of ['front', 'back']) buttons[direction].addEventListener('click', () => {
     remember();
     const order = Object.keys(layout.items).filter(id => id !== selected).sort((a, b) => layout.items[a].z - layout.items[b].z);
@@ -242,6 +259,11 @@ export function startEditor() {
     finally { buttons.save.disabled = false; }
   });
   document.addEventListener('keydown', e => {
+    if (e.key === 'Delete' && !e.ctrlKey && !e.metaKey && !e.altKey
+      && !e.target.closest('input, textarea, select, [contenteditable]') && canDelete()) {
+      e.preventDefault(); deleteSelected();
+      return;
+    }
     if (e.key === 'Escape' && inkPointer === null) buttons.move.click();
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
       e.preventDefault(); if (e.shiftKey) step(future, past); else step(past, future);

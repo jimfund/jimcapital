@@ -4,6 +4,8 @@
   const change = document.querySelector('#spx-change');
   const time = document.querySelector('#spx-time');
   const tape = document.querySelectorAll('[data-ticker]');
+  const softbank = document.querySelector('.softbank-tracker');
+  const softbankPrice = document.querySelector('#softbank-price');
   const number = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -17,7 +19,7 @@
     return Number.isFinite(parsed) && parsed > 0 ? parsed : NaN;
   };
 
-  const clearQuote = () => {
+  const clearSpx = () => {
     monitor.dataset.state = 'offline';
     price.textContent = '—';
     document.querySelectorAll('[data-spx-price]').forEach(output => { output.textContent = '—'; });
@@ -31,6 +33,23 @@
     }
     tape.forEach((item) => { item.textContent = 'SPX · — · SPX · — ·'; });
   };
+
+  const clearSoftbank = () => {
+    softbank.dataset.state = 'offline';
+    softbankPrice.textContent = '—';
+  };
+  const clearQuote = () => { clearSpx(); clearSoftbank(); };
+
+  function showSoftbank(context, fx) {
+    // XYZ quotes Japanese stocks in USD. Convert back using its USD/JPY market.
+    // https://docs.trade.xyz/perpetuals/markets/stocks/japan
+    const usd = positiveNumber(context?.markPx);
+    const usdJpy = positiveNumber(fx?.markPx);
+    const current = usd * usdJpy;
+    if (!Number.isFinite(current) || current <= 0) { clearSoftbank(); return; }
+    softbankPrice.textContent = number.format(current);
+    softbank.dataset.state = 'live';
+  }
 
   async function refresh() {
     clearTimeout(timer);
@@ -49,10 +68,15 @@
       });
       if (!response.ok) throw new Error(String(response.status));
       const [meta, contexts] = await response.json();
-      const index = meta.universe.findIndex((asset) => asset.name === 'xyz:SP500' && !asset.isDelisted);
-      const context = index >= 0 ? contexts[index] : undefined;
+      if (!Array.isArray(meta?.universe) || !Array.isArray(contexts)) throw new Error();
+      const getContext = name => {
+        const index = meta.universe.findIndex(asset => asset?.name === name && !asset.isDelisted);
+        return index >= 0 ? contexts[index] : undefined;
+      };
+      showSoftbank(getContext('xyz:SOFTBANK'), getContext('xyz:JPY'));
+      const context = getContext('xyz:SP500');
       const current = positiveNumber(context?.markPx);
-      if (!Number.isFinite(current)) throw new Error();
+      if (!Number.isFinite(current)) { clearSpx(); return; }
       const previous = positiveNumber(context?.prevDayPx);
       const percent = (current / previous - 1) * 100;
       const formatted = number.format(current);

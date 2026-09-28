@@ -1,5 +1,7 @@
 .site-item { flex: 0 0 auto; max-width: 100%; position: relative; transform-origin: top left; }
 .site-item > .frame, .site-item > .monitor { width: 100%; }
+.softbank-tracker { width: 300px; color: #111; }
+#softbank-price { display: block; margin: 0; font: 24px/1 "Courier New", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .doodled-monitor { position: relative; aspect-ratio: 4 / 3; }
 .doodled-monitor canvas { display: block; width: 100%; height: 100%; }
 .doodle-number[hidden] { display: none; }
@@ -21,6 +23,7 @@ body.editing { padding-top: 90px; align-items: start; }
 .layout-tools [data-state="error"] { color: #a45137; background: #f3e6df; }
 .layout-tools button[aria-pressed="true"] { background: #252525; color: white; }
 .layout-tools [data-action="number"] { font-size: 12px; }
+.layout-tools [data-action="delete"] { font-size: 13px; }
 .layout-tools input[type="color"] { width: 30px; height: 30px; padding: 2px; border: 0; background: none; }
 .ink-overlay { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 15000; touch-action: none; pointer-events: none; }
 .layout-board[data-mode="pen"] .ink-overlay, .layout-board[data-mode="eraser"] .ink-overlay { pointer-events: auto; cursor: crosshair; }
