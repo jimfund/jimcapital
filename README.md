@@ -1,6 +1,7 @@
 # jim.capital
 
-An intentionally blank static website hosted on GitHub Pages.
+A minimal static website hosted on GitHub Pages, displaying an animated crystal ball.
+The original GIF is stored locally at `assets/prediction.gif`.
 
 GitHub Pages publishes the root of the `main` branch. Edit `index.html`, commit,
 and push to update the website. No build tools or dependencies are required.
