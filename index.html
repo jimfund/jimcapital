@@ -70,6 +70,10 @@
     <link rel="stylesheet" href="layout.css">
   </head>
   <body>
+    <div class="popout-tools">
+      <button id="popout-button" type="button">↗ Pop out</button>
+      <span id="popout-status" role="status"></span>
+    </div>
     <main>
       <img src="assets/prediction.gif" width="105" height="125" alt="">
       <div class="frame">
@@ -112,6 +116,7 @@
         document.querySelector(".monitor").dataset.design = design;
       }
     </script>
+    <script src="popout.js" defer></script>
     <script src="ticker.js" defer></script>
     <script src="site.js" type="module"></script>
   </body>

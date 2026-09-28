@@ -31,3 +31,11 @@ body.editing { padding-top: 90px; align-items: start; }
 .edit-entry { position: fixed; right: 18px; bottom: 18px; background: #fffffff0; border: 1px solid #ddd; z-index: 20000; }
 @media (max-width: 480px) { .layout-tools { gap: 0; } .layout-tools input { width: 64px; } }
 @media (max-width: 650px) { body.editing { padding-top: 125px; } }
+
+.popout-tools { position: fixed; top: 14px; right: 18px; z-index: 20000; display: flex; align-items: flex-end; flex-direction: column; gap: 8px; max-width: calc(100vw - 36px); }
+.popout-tools[hidden] { display: none; }
+#popout-button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fffffff5; color: #333; font: 13px system-ui, sans-serif; cursor: pointer; }
+#popout-button:hover { background: #eee; }
+#popout-button:focus-visible { outline: 2px solid #828c78; outline-offset: 3px; }
+#popout-button:disabled { opacity: .5; cursor: wait; }
+#popout-status { max-width: 260px; background: #fffffff5; color: #555; font: 12px/1.4 system-ui, sans-serif; }

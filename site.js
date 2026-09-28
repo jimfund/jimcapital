@@ -120,7 +120,7 @@ async function init() {
   }
   if (editing || (isLayout(saved) && Object.keys(saved.items).length)) applyLayout();
   new ResizeObserver(() => { if (placed) applyLayout(); }).observe(main);
-  if (['localhost', '127.0.0.1'].includes(location.hostname) && !editing) {
+  if (['localhost', '127.0.0.1'].includes(location.hostname) && !editing && !new URLSearchParams(location.search).has('popout') && window.self === window.top) {
     const link = document.createElement('a');
     link.className = 'edit-entry';
     link.href = '?edit=1';
