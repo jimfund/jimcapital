@@ -101,7 +101,7 @@
     } finally {
       clearTimeout(timeout);
       inFlight = false;
-      if (!document.hidden) timer = setTimeout(refresh, 15000);
+      if (!document.hidden) timer = setTimeout(refresh, 5000);
     }
   }
 
