@@ -172,7 +172,7 @@ export function createClock3D(host, { displayStyle = 'classic' } = {}) {
       frame = 0;
       const progress = Math.min(1, Math.max(0, (now - hoverStarted) / 240));
       hoverAmount = hoverFrom + (hoverTarget - hoverFrom) * (1 - (1 - progress) ** 3);
-      presentation.rotation.set(-hoverAmount * .02, hoverAmount * .045, 0);
+      presentation.rotation.set(-hoverAmount * .045, hoverAmount * .10, 0);
       const moving = flaps?.animate(now);
       renderer.render(scene, camera);
       if (moving || (progress < 1 && hoverFrom !== hoverTarget)) render();
