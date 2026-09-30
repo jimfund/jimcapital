@@ -20,6 +20,6 @@ Set `.dev.vars` locally (ignored): `PUBLISHING_SECRET`, `ONE_WORD_OWNER_ID=local
 
 `npm run build` preserves the existing homepage and tracked assets, adds the editor assets, and builds the Worker. `.dev.vars` may be emitted by the Cloudflare build; remove that generated file from `dist/server` before packaging. Do not upload local secret files. The Sites package helper includes migrations.
 
-The initial 54 Post Ideas draft uses `cloud/seed.json` to preserve the manually separated drawings and placements. `python3 scripts/seed-article.py` refreshes this seed from the local article before its first cloud import. It never reads or packages the full One Word library. Later cloud edits are authoritative and are not overwritten by deployment.
+The initial 54 Post Ideas draft uses `cloud/seed.json` to preserve the manually separated drawings and placements. `python3 scripts/seed-article.py` refreshes this seed from the local article before its first cloud import. It never reads or packages the full One Word library. Publication dates use the first saved publication from version history, displayed in America/Los_Angeles time. Updating or republishing a post preserves its original date. Later cloud edits are authoritative and are not overwritten by deployment.
 
 DNS cutover requires replacing only the jim.capital website A records with the Sites-provided apex targets and adding the supplied validation records. Preserve mail records and the separate one-word subdomain. Keep the original GitHub Pages site available until the new custom domain is verified.

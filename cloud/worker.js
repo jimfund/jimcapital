@@ -5,6 +5,8 @@ const json = (data, status=200) => Response.json(data, {status,headers:{'Cache-C
 const html = (body,status=200,privatePage=false) => new Response(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':privatePage?'no-store, private':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});
 const digest = async text => [...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text)))].map(b=>b.toString(16).padStart(2,'0')).join('');
 const token = () => crypto.randomUUID()+crypto.randomUUID();
+// Published history survives edits and unpublishing, so the original date stays stable.
+const publicationDate = 'COALESCE((SELECT MIN(created_at) FROM article_versions WHERE article_id=articles.id), published_at)';
 class HTTPError extends Error { constructor(status,message){super(message);this.status=status;} }
 async function body(request) {
  if(!request.headers.get('Content-Type')?.startsWith('application/json'))throw new HTTPError(415,'Expected JSON.');
@@ -66,9 +68,9 @@ async function handle(request,env) {
   const preview=path.match(/^\/editor\/preview\/([a-f0-9-]+)$/),match=path.match(/^\/api\/articles\/([a-f0-9-]+)(?:\/(publish|unpublish|versions|restore))?$/);
   if(!match&&!preview)throw new HTTPError(404,'Not found.');
   const articleId=(match||preview)[1],action=match?.[2];
-  const row=await env.DB.prepare('SELECT * FROM articles WHERE id=?').bind(articleId).first();
+  const row=await env.DB.prepare(`SELECT *, ${publicationDate} AS first_published_at FROM articles WHERE id=?`).bind(articleId).first();
   if(!row)throw new HTTPError(404,'Article not found.');
-  if(preview&&request.method==='GET')return html(renderArticle(JSON.parse(row.draft),{slug:row.slug,editing:url.searchParams.get('edit')==='1'}),200,true);
+  if(preview&&request.method==='GET')return html(renderArticle(JSON.parse(row.draft),{slug:row.slug,editing:url.searchParams.get('edit')==='1',publishedAt:row.first_published_at}),200,true);
   if(request.method==='GET'&&!action)return json(result(row));
   if(request.method==='GET'&&action==='versions')return json((await env.DB.prepare('SELECT revision,created_at FROM article_versions WHERE article_id=? ORDER BY revision DESC LIMIT 20').bind(articleId).all()).results);
   if(request.method==='PUT'&&!action) {
@@ -110,7 +112,7 @@ async function handle(request,env) {
   return Response.redirect(destination.toString(),308);
  }
  if(path==='/prac'||path==='/prac/') {
-  const rows=await env.DB.prepare("SELECT slug, json_extract(published, '$.title') AS title FROM articles WHERE published IS NOT NULL AND slug GLOB 'prac/*' ORDER BY slug COLLATE NOCASE").all();
+  const rows=await env.DB.prepare(`SELECT slug, json_extract(published, '$.title') AS title, ${publicationDate} AS published_at FROM articles WHERE published IS NOT NULL AND slug GLOB 'prac/*' ORDER BY slug COLLATE NOCASE`).all();
   return html(renderDirectory(rows.results));
  }
  const drawingPath=path.match(/^\/(.+)\/doodles\/([a-z0-9-]+)\.svg$/);
@@ -123,8 +125,8 @@ async function handle(request,env) {
  // Public readers see only the explicit published snapshot, never a draft.
  const slug=path.replace(/^\/+|\/+$/g,'');
  if(slugOK(slug)) {
-  const row=await env.DB.prepare('SELECT slug,published FROM articles WHERE slug=? AND published IS NOT NULL').bind(slug).first();
-  if(row)return html(renderArticle(JSON.parse(row.published),{slug:row.slug}));
+  const row=await env.DB.prepare(`SELECT slug,published, ${publicationDate} AS first_published_at FROM articles WHERE slug=? AND published IS NOT NULL`).bind(slug).first();
+  if(row)return html(renderArticle(JSON.parse(row.published),{slug:row.slug,publishedAt:row.first_published_at}));
  }
  return env.ASSETS.fetch(request);
 }

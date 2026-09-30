@@ -97,3 +97,21 @@ test('address migration preserves content and prevents stale editor writes',()=>
  db.exec(readFileSync(new URL('../drizzle/0001_short_prac_urls.sql',import.meta.url),'utf8'));
  const row=db.prepare('SELECT * FROM articles').get();assert.equal(row.slug,'prac/001');assert.equal(row.revision,35);assert.equal(row.draft,draft);assert.equal(row.published,published);db.close();
 });
+
+test('publication dates use the first publication, remain stable after updates, and use Pacific dates',async t=>{
+ let now=Date.parse('2026-10-01T06:30:00Z');t.mock.method(Date,'now',()=>now);
+ const {request,post}=setup();const article=await imported(request,post);
+ const preview=await (await request('/editor/preview/'+article.id,{user:'jim'})).text();
+ assert.ok(!preview.includes('<time class="publication-date"'));
+ const publish=()=>request('/api/articles/'+article.id+'/publish',{user:'jim',method:'POST',data:{revision:article.revision}});
+ assert.equal((await publish()).status,200);
+ const originalTime='datetime="2026-10-01T06:30:00.000Z">September 30, 2026</time>';
+ for(const path of ['/'+article.slug,'/prac'])assert.ok((await (await request(path)).text()).includes(originalTime));
+ now+=3*86400000;article.document.markdown='Updated post';
+ const saved=await request('/api/articles/'+article.id,{user:'jim',method:'PUT',data:{document:article.document,slug:article.slug,revision:article.revision}});article.revision=(await saved.json()).revision;
+ assert.equal((await publish()).status,200);
+ for(const path of ['/'+article.slug,'/prac'])assert.ok((await (await request(path)).text()).includes(originalTime));
+ await request('/api/articles/'+article.id+'/unpublish',{user:'jim',method:'POST',data:{}});now+=86400000;
+ assert.equal((await publish()).status,200);
+ assert.ok((await (await request('/'+article.slug)).text()).includes(originalTime));
+});

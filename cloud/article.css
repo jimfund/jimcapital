@@ -63,3 +63,7 @@ footer { margin: 36px 20px 0; padding: 18px 0; font: 12px/1.5 'Courier New', mon
 .post-directory li { margin: 0 0 18px; }
 .post-directory a { display: flex; align-items: baseline; gap: 20px; }
 .post-number { flex: none; font: 12px/1.5 'Courier New', monospace; }
+
+.publication-date { display: block; margin-top: 14px; color: #716e5e; font: 12px/1.5 'Courier New', monospace; }
+.post-summary { min-width: 0; }
+.post-summary .publication-date { margin-top: 4px; }
