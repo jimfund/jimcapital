@@ -1,6 +1,4 @@
 .market-clock { flex: 0 0 300px; width: 300px; }
 .clock-dial { display: block; width: 100%; height: auto; }
-.clock-session { fill: none; stroke-width: 6; stroke-linecap: round; }
-.clock-session-us { stroke: #367758; }
-.clock-session-jp { stroke: #bc5144; }
-.clock-marker { fill: #287acb; }
+.clock-session { fill: none; stroke: #000; stroke-width: 6; stroke-linecap: butt; }
+.clock-marker { fill: #000; }

@@ -42,7 +42,7 @@ function update() {
     }
   }
   const hours = windows => windows.map(([start, end]) => `${formatMinutes(start)}–${formatMinutes(end)}`).join(' / ');
-  clock.querySelector('#clock-description').textContent = `24-hour San Francisco clock, with midnight at the top and noon at the bottom. Green: regular U.S. stock sessions ${hours(us)}. Red: Japan ${hours(japan)}. All times Pacific. Weekdays at each exchange. Holidays and early closes are not shown.`;
+  clock.querySelector('#clock-description').textContent = `24-hour San Francisco clock, with midnight at the top and noon at the bottom. Regular U.S. stock sessions ${hours(us)}. Japan ${hours(japan)}. All times Pacific. Weekdays at each exchange. Holidays and early closes are not shown.`;
 }
 
 update();
