@@ -66,7 +66,7 @@ let dayKey;
 function update() {
   const now = new Date();
   const minutes = dialMinutes(now);
-  const rows = getStatus?.(now) || (calendarFailed ? ['US', 'JP'].map(key => ({
+  const rows = getStatus?.(now) || (calendarFailed ? ['JP', 'US'].map(key => ({
     key, phase: 'unknown', confidence: 'unknown', text: 'Calendar unavailable', localTime: '--:--',
   })) : null);
   const windows = marketSessions(now);
@@ -75,7 +75,7 @@ function update() {
     || 'Checking market calendar';
   spinButton.setAttribute('aria-label', `${rotationLabel} ${statusText}`);
   spinButton.title = statusText;
-  reverse.replaceChildren(...(rows || [{ key: 'US', text: 'Checking…' }, { key: 'JP', text: 'Checking…' }]).map(row => {
+  reverse.replaceChildren(...(rows || [{ key: 'JP', text: 'Checking…' }, { key: 'US', text: 'Checking…' }]).map(row => {
     const line = document.createElement('span');
     const title = document.createElement('strong');
     title.textContent = row.countdownLabel || row.key;

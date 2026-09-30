@@ -46,7 +46,7 @@ let getStatus;
 let failed = false;
 function update() {
   const now = new Date();
-  const rows = getStatus?.(now) || (failed ? ['US', 'JP'].map(key => ({ key, phase: 'unknown' })) : null);
+  const rows = getStatus?.(now) || (failed ? ['JP', 'US'].map(key => ({ key, phase: 'unknown' })) : null);
   const { us, japan } = marketSessions(now);
   for (const clock of clocks) {
     clock.renderer?.update(dialMinutes(now), [...us, ...japan], rows);

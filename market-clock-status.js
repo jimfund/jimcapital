@@ -252,7 +252,7 @@ export function createMarketStatus(calendar) {
         };
     }
 
-    const markets = ['US', 'JP'].map(key => normalizeMarket(key, calendar.markets[key]));
+    const markets = ['JP', 'US'].map(key => normalizeMarket(key, calendar.markets[key]));
     return now => markets.map(market => {
         const status = marketStatus(market, now);
         const minutes = status.eventTime

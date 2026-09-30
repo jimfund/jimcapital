@@ -16,7 +16,7 @@ export function drawClockDisplay(ctx, rows, requestedStyle = 'classic', { overla
   for (let i = 0; i < 2; i++) {
     const row = rows?.[i];
     const y = 235 + i * 390;
-    const label = row?.countdownLabel || (i ? 'JP' : 'US');
+    const label = row?.countdownLabel || (i ? 'US' : 'JP');
     const countdown = row?.countdown || (row?.phase === 'unknown' ? 'UNKNOWN' : '…');
     ctx.fillStyle = ink;
     ctx.font = '600 92px "DejaVu Sans", Arial, sans-serif';
