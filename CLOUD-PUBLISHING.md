@@ -4,6 +4,8 @@ In One Word's finished-post editor, the connected owner sees **prepare for jim.c
 
 The private editor autosaves Markdown, SVG paths, per-viewport positions and widths, and deletions into D1. Publish copies the complete draft into a public snapshot and records its revision. Public article routes and SVG endpoints read only that snapshot. Draft changes and version restoration stay private until another publish. Reimporting an existing source post opens its existing draft without overwriting editorial work.
 
+Published posts under `/prac/` are listed automatically at `/prac`. Legacy `/practicehaven/` URLs redirect permanently, including SVG links. The address migration preserves all draft and published content.
+
 ## Local development
 
 Use Node 22.13 or later. `npm install`, then `npm run dev` serves the migrated site on port 8001. `python3 preview.py` remains the original static/layout preview on port 8000.

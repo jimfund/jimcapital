@@ -44,7 +44,7 @@ async function save() {
     while (queued) {
       queued = false;
       const body = JSON.stringify(layout);
-      const response = await fetch('/__practicehaven/001/layout', {
+      const response = await fetch('/__prac/001/layout', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true,
       });
       if (!response.ok) throw new Error('Save failed');

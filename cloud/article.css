@@ -57,3 +57,9 @@ footer { margin: 36px 20px 0; padding: 18px 0; font: 12px/1.5 'Courier New', mon
 .decoration.dragging img { cursor: grabbing; }
 .layout-error { font: 12px/1.5 'Courier New', monospace; color: #a02020; }
 .decoration.selected img { outline: 1px dashed #aaa; outline-offset: 5px; }
+
+.directory { max-width: 720px; }
+.post-directory { list-style: none; margin: 0; padding: 0 20px 30px; font-size: 20px; line-height: 1.5; }
+.post-directory li { margin: 0 0 18px; }
+.post-directory a { display: flex; align-items: baseline; gap: 20px; }
+.post-number { flex: none; font: 12px/1.5 'Courier New', monospace; }

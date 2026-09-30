@@ -15,10 +15,10 @@ class Content(HTMLParser):
  def handle_data(self,s):
   if self.inside:self.items[-1]+=s
   if self.heading:self.title+=s
-p=Content(); page=(root/'practicehaven/001/index.html').read_text(); p.feed(page)
+p=Content(); page=(root/'prac/001/index.html').read_text(); p.feed(page)
 drawings=[]
 for name in re.findall(r'src="doodles/([^"/]+)\.svg"',page):
- svg=ET.parse(root/f'practicehaven/001/doodles/{name}.svg').getroot()
+ svg=ET.parse(root/f'prac/001/doodles/{name}.svg').getroot()
  x,y,w,h=map(float,svg.attrib['viewBox'].split())
  paths=[]
  for path in svg.findall('.//{http://www.w3.org/2000/svg}path'):
@@ -26,6 +26,6 @@ for name in re.findall(r'src="doodles/([^"/]+)\.svg"',page):
   d=re.sub(r'([ML])\s*(-?[\d.]+)[ ,]+(-?[\d.]+)',lambda m:f'{m[1]}{float(m[2])-x:.2f} {float(m[3])-y:.2f}',d)
   paths.append(d)
  drawings.append(dict(id=name,width=w,height=h,paths=paths))
-layout=json.loads((root/'practicehaven/001/layout.json').read_text());layout.setdefault('deleted',[]);layout.pop('version',None)
-seed={'sourceId':'0745987d-f172-4df9-9991-1cec2b21e0f3','slug':'practicehaven/001','document':dict(title=p.title,markdown='\n'.join(f'{i+1}. {s}' for i,s in enumerate(p.items)),drawings=drawings,layout=layout)}
+layout=json.loads((root/'prac/001/layout.json').read_text());layout.setdefault('deleted',[]);layout.pop('version',None)
+seed={'sourceId':'0745987d-f172-4df9-9991-1cec2b21e0f3','slug':'prac/001','document':dict(title=p.title,markdown='\n'.join(f'{i+1}. {s}' for i,s in enumerate(p.items)),drawings=drawings,layout=layout)}
 (root/'cloud/seed.json').write_text(json.dumps(seed,separators=(',',':'))+'\n')

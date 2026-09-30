@@ -36,16 +36,16 @@ test('drafts stay private, publishing freezes content and placement, versions re
  const {request,post}=setup();let article=await imported(request,post);
  assert.equal((await request('/'+article.slug)).status,404);
  const save=async()=>{const response=await request('/api/articles/'+article.id,{user:'jim',method:'PUT',data:{document:article.document,slug:article.slug,revision:article.revision}});assert.equal(response.status,200);article.revision=(await response.json()).revision;};
- article.slug='practicehaven/001';article.document.layout.wide['doodle-1']={x:.15,y:.3,width:150};article.document.layout.deleted=['doodle-2'];await save();
+ article.slug='prac/001';article.document.layout.wide['doodle-1']={x:.15,y:.3,width:150};article.document.layout.deleted=['doodle-2'];await save();
  assert.equal((await request('/api/articles/'+article.id+'/publish',{user:'jim',method:'POST',data:{revision:article.revision}})).status,200);
- const published=await (await request('/practicehaven/001')).text();assert.ok(published.includes('Hello <strong>world</strong>'));assert.ok(published.includes('"width":150'));assert.ok(published.includes('window.articleEditing=false'));
+ const published=await (await request('/prac/001')).text();assert.ok(published.includes('Hello <strong>world</strong>'));assert.ok(published.includes('"width":150'));assert.ok(published.includes('window.articleEditing=false'));
  article.document.markdown='Unpublished secret';await save();
- assert.equal(await (await request('/practicehaven/001')).text(),published);
+ assert.equal(await (await request('/prac/001')).text(),published);
  const conflict=await request('/api/articles/'+article.id,{user:'jim',method:'PUT',data:{document:article.document,slug:article.slug,revision:1}});assert.equal(conflict.status,409);
  const versions=await (await request('/api/articles/'+article.id+'/versions',{user:'jim'})).json();assert.equal(versions.length,1);
  const restored=await request('/api/articles/'+article.id+'/restore',{user:'jim',method:'POST',data:{revision:versions[0].revision,currentRevision:article.revision}});assert.equal(restored.status,200);assert.equal((await restored.json()).document.markdown,post.markdown);
  assert.equal((await request('/api/articles/'+article.id+'/unpublish',{user:'jim',method:'POST',data:{}})).status,200);
- assert.equal((await request('/practicehaven/001')).status,404);
+ assert.equal((await request('/prac/001')).status,404);
 });
 test('transfers expire, cannot be replayed, and re-import preserves editorial changes',async()=>{
  const {env,request,post}=setup(),handoff=await transfer(request,post);
@@ -63,4 +63,37 @@ test('preserves the existing article, safe markdown, and separate drawings',()=>
  assert.equal(splitDoodles({strokes:[[[0,0],[10,10]],[[9,9],[15,15]],[[100,100],[110,110]]]}).length,2);
  assert.equal(slugOK('../secret'),false);assert.equal(slugOK('editor/private'),false);
  assert.equal(validDocument({...doc,drawings:[{id:'bad',width:1,height:1,paths:['" onload="evil']}] }),false);
+});
+
+test('prac directory lists only published prac titles and updates on publish and unpublish',async()=>{
+ const {env,request,post}=setup();
+ const article=await imported(request,post);assert.ok(article.slug.startsWith('prac/'));
+ assert.equal(seed.slug,'prac/001');
+ let page=await request('/prac');assert.equal(page.status,200);assert.ok(!(await page.text()).includes(post.title));
+ await request('/api/articles/'+article.id+'/publish',{user:'jim',method:'POST',data:{revision:article.revision}});
+ const publishedPage=await (await request('/prac/')).text();assert.ok(publishedPage.includes(`href="/${article.slug}"`));assert.ok(publishedPage.includes(post.title));
+ article.document.title='SECRET NEW TITLE';
+ await request('/api/articles/'+article.id,{user:'jim',method:'PUT',data:{document:article.document,slug:article.slug,revision:article.revision}});
+ const pageAfterDraft=await (await request('/prac')).text();assert.ok(pageAfterDraft.includes(post.title));assert.ok(!pageAfterDraft.includes('SECRET NEW TITLE'));
+ const doc=JSON.stringify({...article.document,title:'Outside this directory'});
+ await env.DB.prepare('INSERT INTO articles (id,source_id,slug,draft,revision,published,updated_at) VALUES (?,?,?,?,1,?,1)').bind('outside','outside','other/001',doc,doc).run();
+ assert.ok(!(await (await request('/prac')).text()).includes('Outside this directory'));
+ await request('/api/articles/'+article.id+'/unpublish',{user:'jim',method:'POST',data:{}});
+ assert.ok(!(await (await request('/prac')).text()).includes(post.title));
+ assert.equal(slugOK('prac'),false);assert.equal(slugOK('practicehaven'),false);
+});
+
+test('legacy URLs redirect permanently, preserving suffixes, queries and SVG links',async()=>{
+ const {request}=setup();
+ for(const [old,next] of [['/practicehaven','/prac'],['/practicehaven/','/prac/'],['/practicehaven/001?from=old','/prac/001?from=old'],['/practicehaven/001/doodles/rocket.svg','/prac/001/doodles/rocket.svg']]){
+  const r=await request(old);assert.equal(r.status,308);assert.equal(r.headers.get('Location'),origin+next);
+ }
+});
+
+test('address migration preserves content and prevents stale editor writes',()=>{
+ const db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../drizzle/0000_giant_vengeance.sql',import.meta.url),'utf8'));
+ const draft=JSON.stringify({...seed.document,title:'Unpublished edit'}),published=JSON.stringify(seed.document);
+ db.prepare('INSERT INTO articles (id,source_id,slug,draft,revision,published,updated_at) VALUES (?,?,?,?,34,?,1)').run('existing','source','practicehaven/001',draft,published);
+ db.exec(readFileSync(new URL('../drizzle/0001_short_prac_urls.sql',import.meta.url),'utf8'));
+ const row=db.prepare('SELECT * FROM articles').get();assert.equal(row.slug,'prac/001');assert.equal(row.revision,35);assert.equal(row.draft,draft);assert.equal(row.published,published);db.close();
 });

@@ -6,7 +6,7 @@ import { renderArticle } from '../cloud/content.js';
 const script=readFileSync(new URL('../cloud/article.js',import.meta.url),'utf8');
 const doc={title:'Article',markdown:'A paragraph.',drawings:[{id:'drawing',width:100,height:100,paths:['M0 0 L100 100']}],layout:{wide:{},narrow:{},deleted:[]}};
 function editor(editing){
- const dom=new JSDOM(renderArticle(doc,{editing,slug:'practicehaven/test'}),{url:'https://jim.example/editor/preview/test',runScripts:'outside-only',pretendToBeVisual:true});
+ const dom=new JSDOM(renderArticle(doc,{editing,slug:'prac/test'}),{url:'https://jim.example/editor/preview/test',runScripts:'outside-only',pretendToBeVisual:true});
  const w=dom.window;w.articleEditing=editing;w.matchMedia=()=>({matches:false});w.ResizeObserver=class{observe(){}};
  w.HTMLElement.prototype.getBoundingClientRect=function(){return this.classList.contains('page')?{left:0,top:0,width:1000,height:2000}:{left:20,top:100,width:100,height:100};};
  const messages=[];w.postMessage=message=>messages.push(message);w.eval(script);return {w,messages,close:()=>dom.window.close()};

@@ -110,7 +110,7 @@ def atomic_json(destination, data):
 def valid_article_layout(data):
     if not isinstance(data, dict) or not {"version", "wide", "narrow"} <= set(data) or set(data) - {"version", "wide", "narrow", "deleted"} or data["version"] != 1:
         return False
-    ids = {p.stem for p in (ROOT / "practicehaven/001/doodles").glob("*.svg")}
+    ids = {p.stem for p in (ROOT / "prac/001/doodles").glob("*.svg")}
     deleted = data.get("deleted", [])
     if not isinstance(deleted, list) or len(deleted) > len(ids) or not all(isinstance(key, str) and key in ids for key in deleted):
         return False
@@ -132,9 +132,18 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def do_GET(self):
+        if self.path == "/practicehaven" or self.path.startswith("/practicehaven/"):
+            self.send_response(308)
+            self.send_header("Location", self.path.replace("/practicehaven", "/prac", 1))
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
+        super().do_GET()
+
     def do_POST(self):
         drawing_id = self.path.removeprefix("/__doodles/") if self.path.startswith("/__doodles/") else None
-        article_layout = self.path == "/__practicehaven/001/layout"
+        article_layout = self.path in ("/__prac/001/layout", "/__practicehaven/001/layout")
         if not article_layout and self.path not in ("/__doodle", "/__layout", "/__scene") and (not drawing_id or not DOODLE_ID.fullmatch(drawing_id)):
             self.send_error(404)
             return
@@ -165,7 +174,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         try:
             with SAVE_LOCK:
                 if article_layout:
-                    atomic_json(Path(self.directory) / "practicehaven/001/layout.json", data)
+                    atomic_json(Path(self.directory) / "prac/001/layout.json", data)
                 elif self.path == "/__scene":
                     for key, drawing in data["drawings"].items():
                         path = assets / "monitor-doodle.json" if key == "monitor" else assets / "doodles" / f"{key}.json"

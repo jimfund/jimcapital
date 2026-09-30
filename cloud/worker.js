@@ -1,4 +1,4 @@
-import { fromPost, renderArticle, validDocument, slugOK, svg } from './content.js';
+import { fromPost, renderArticle, validDocument, slugOK, svg, renderDirectory } from './content.js';
 import seed from './seed.json' with { type: 'json' };
 
 const json = (data, status=200) => Response.json(data, {status,headers:{'Cache-Control':'no-store, private','Vary':'Cookie','Referrer-Policy':'no-referrer'}});
@@ -47,7 +47,7 @@ async function handle(request,env) {
   await requireOwner(request,env.DB);
   const post=JSON.parse(transfer.payload),existing=await env.DB.prepare('SELECT * FROM articles WHERE source_id=?').bind(post.id).first();
   if(existing){await env.DB.prepare('DELETE FROM transfers WHERE token_hash=?').bind(hash).run();return json({...result(existing),existing:true});}
-  let document=fromPost(post),slug=`practicehaven/${crypto.randomUUID().slice(0,8)}`;
+  let document=fromPost(post),slug=`prac/${crypto.randomUUID().slice(0,8)}`;
   if(post.id===seed.sourceId){document={...seed.document,title:document.title,markdown:document.markdown};slug=seed.slug;}
   const articleId=crypto.randomUUID(),draft=JSON.stringify(document),now=Date.now();
   await env.DB.batch([
@@ -73,6 +73,7 @@ async function handle(request,env) {
   if(request.method==='GET'&&action==='versions')return json((await env.DB.prepare('SELECT revision,created_at FROM article_versions WHERE article_id=? ORDER BY revision DESC LIMIT 20').bind(articleId).all()).results);
   if(request.method==='PUT'&&!action) {
    const data=await body(request);
+   if(typeof data.slug==='string')data.slug=data.slug.replace(/^practicehaven\//,'prac/');
    if(!validDocument(data.document)||!slugOK(data.slug)||!Number.isSafeInteger(data.revision))throw new HTTPError(400,'Check the article and its address.');
    if(data.revision!==row.revision)throw new HTTPError(409,'A newer edit was saved elsewhere. Reload before editing further.');
    if(row.published&&data.slug!==row.slug)throw new HTTPError(400,'Unpublish before changing the address of a published article.');
@@ -103,6 +104,15 @@ async function handle(request,env) {
   throw new HTTPError(405,'Method not allowed.');
  }
  if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method not allowed',{status:405});
+ if(path==='/practicehaven'||path.startsWith('/practicehaven/')) {
+  const destination=new URL(request.url);
+  destination.pathname=path.replace(/^\/practicehaven(?=\/|$)/,'/prac');
+  return Response.redirect(destination.toString(),308);
+ }
+ if(path==='/prac'||path==='/prac/') {
+  const rows=await env.DB.prepare("SELECT slug, json_extract(published, '$.title') AS title FROM articles WHERE published IS NOT NULL AND slug GLOB 'prac/*' ORDER BY slug COLLATE NOCASE").all();
+  return html(renderDirectory(rows.results));
+ }
  const drawingPath=path.match(/^\/(.+)\/doodles\/([a-z0-9-]+)\.svg$/);
  if(drawingPath){
   const row=await env.DB.prepare('SELECT published FROM articles WHERE slug=? AND published IS NOT NULL').bind(drawingPath[1]).first();

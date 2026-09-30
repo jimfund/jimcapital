@@ -33,7 +33,7 @@ class ArticleLayoutTests(unittest.TestCase):
                 data = {"version": 1, "wide": {"rocket": {"x": .3, "y": .6}}, "narrow": {}, "deleted": ["smile"]}
                 def post(origin, value):
                     connection = http.client.HTTPConnection(host)
-                    connection.request('POST', '/__practicehaven/001/layout', json.dumps(value),
+                    connection.request('POST', '/__prac/001/layout', json.dumps(value),
                                        {'Origin': origin, 'Content-Type': 'application/json'})
                     response = connection.getresponse()
                     response.read()
@@ -41,7 +41,7 @@ class ArticleLayoutTests(unittest.TestCase):
                     return response.status
                 self.assertEqual(post('https://other.example', data), 403)
                 self.assertEqual(post('http://' + host, data), 204)
-                saved = Path(folder) / 'practicehaven/001/layout.json'
+                saved = Path(folder) / 'prac/001/layout.json'
                 self.assertEqual(json.loads(saved.read_text()), data)
                 self.assertEqual(post('http://' + host, {**data, 'wide': {'rocket': {'x': 2, 'y': 0}}}), 400)
                 self.assertEqual(json.loads(saved.read_text()), data)
