@@ -1,13 +1,14 @@
 // The original GIF has ten frames: nine at 100 ms, then the uncapped pen.
-// Its frames are stored side by side so playback can stop on the last one.
+// Play its sprite frames forward to open, backward to close, and hold at either end.
 export function animatePenLink(link) {
   const image = link.querySelector('img');
   const win = link.ownerDocument.defaultView;
   const reducedMotion = win.matchMedia('(prefers-reduced-motion: reduce)');
   let hovered = false, keyboardFocused = false, active = false;
-  let animation = null, started = 0;
+  let animation = null, started = 0, frame = 0, origin = 0, direction = 1;
 
-  function show(frame) {
+  function show(nextFrame) {
+    frame = nextFrame;
     image.style.transform = `translateX(${-frame * 10}%)`;
   }
   function stop() {
@@ -15,18 +16,19 @@ export function animatePenLink(link) {
     animation = null;
   }
   function tick(now) {
-    const frame = Math.min(9, Math.floor((now - started) / 100));
-    show(frame);
-    animation = frame < 9 ? win.requestAnimationFrame(tick) : null;
+    const steps = Math.floor((now - started) / 100);
+    show(Math.max(0, Math.min(9, origin + direction * steps)));
+    animation = frame !== (active ? 9 : 0) ? win.requestAnimationFrame(tick) : null;
   }
   function update() {
     const next = hovered || keyboardFocused;
     if (next === active) return;
     active = next;
     stop();
-    if (!active) return show(0);
-    if (reducedMotion.matches) return show(9);
-    show(0);
+    if (reducedMotion.matches) return show(active ? 9 : 0);
+    if (frame === (active ? 9 : 0)) return;
+    origin = frame;
+    direction = active ? 1 : -1;
     started = win.performance.now();
     animation = win.requestAnimationFrame(tick);
   }
@@ -46,7 +48,7 @@ export function animatePenLink(link) {
   // Clicking the link must not leave it open after the pointer moves away.
   link.addEventListener('pointerdown', () => { keyboardFocused = false; update(); });
   reducedMotion.addEventListener('change', () => {
-    if (active && reducedMotion.matches) { stop(); show(9); }
+    if (reducedMotion.matches) { stop(); show(active ? 9 : 0); }
   });
   show(0);
 }
