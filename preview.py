@@ -107,6 +107,25 @@ def atomic_json(destination, data):
             temporary.unlink(missing_ok=True)
 
 
+def valid_article_layout(data):
+    if not isinstance(data, dict) or not {"version", "wide", "narrow"} <= set(data) or set(data) - {"version", "wide", "narrow", "deleted"} or data["version"] != 1:
+        return False
+    ids = {p.stem for p in (ROOT / "practicehaven/001/doodles").glob("*.svg")}
+    deleted = data.get("deleted", [])
+    if not isinstance(deleted, list) or len(deleted) > len(ids) or not all(isinstance(key, str) and key in ids for key in deleted):
+        return False
+    for mode in ("wide", "narrow"):
+        positions = data[mode]
+        if not isinstance(positions, dict) or not set(positions) <= ids:
+            return False
+        for position in positions.values():
+            if not isinstance(position, dict) or set(position) != {"x", "y"}:
+                return False
+            if not all(type(v) in (int, float) and math.isfinite(v) and 0 <= v <= 1 for v in position.values()):
+                return False
+    return True
+
+
 class PreviewHandler(SimpleHTTPRequestHandler):
     def end_headers(self):
         # The editor and preview must use the same current scripts and artwork.
@@ -115,7 +134,8 @@ class PreviewHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         drawing_id = self.path.removeprefix("/__doodles/") if self.path.startswith("/__doodles/") else None
-        if self.path not in ("/__doodle", "/__layout", "/__scene") and (not drawing_id or not DOODLE_ID.fullmatch(drawing_id)):
+        article_layout = self.path == "/__practicehaven/001/layout"
+        if not article_layout and self.path not in ("/__doodle", "/__layout", "/__scene") and (not drawing_id or not DOODLE_ID.fullmatch(drawing_id)):
             self.send_error(404)
             return
         port = self.server.server_port
@@ -134,7 +154,7 @@ class PreviewHandler(SimpleHTTPRequestHandler):
                 self.send_error(413)
                 return
             data = json.loads(self.rfile.read(length))
-            validator = valid_scene if self.path == "/__scene" else valid_layout if self.path == "/__layout" else valid_drawing
+            validator = valid_article_layout if article_layout else valid_scene if self.path == "/__scene" else valid_layout if self.path == "/__layout" else valid_drawing
             if not validator(data):
                 self.send_error(400)
                 return
@@ -144,7 +164,9 @@ class PreviewHandler(SimpleHTTPRequestHandler):
         assets = Path(self.directory) / "assets"
         try:
             with SAVE_LOCK:
-                if self.path == "/__scene":
+                if article_layout:
+                    atomic_json(Path(self.directory) / "practicehaven/001/layout.json", data)
+                elif self.path == "/__scene":
                     for key, drawing in data["drawings"].items():
                         path = assets / "monitor-doodle.json" if key == "monitor" else assets / "doodles" / f"{key}.json"
                         atomic_json(path, drawing)
