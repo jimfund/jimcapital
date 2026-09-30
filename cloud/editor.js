@@ -1,5 +1,5 @@
 const app=document.querySelector('#app'),status=document.querySelector('#status'),publish=document.querySelector('#publish');
-let article,change=0,saved=0,timer,saving,failed=false,frame,selectedId,needsPreview=false;
+let article,change=0,saved=0,timer,saving,failed=false,frame,selectedId,needsPreview=false,previewObserver;
 const transferKey='jim.capital.pending-transfer';
 const fragment=new URLSearchParams(location.hash.slice(1));
 if(fragment.has('transfer')){sessionStorage.setItem(transferKey,fragment.get('transfer'));history.replaceState(null,'',location.pathname+location.search);}
@@ -21,6 +21,7 @@ async function flush(redraw=false){
    const result=await api(`/api/articles/${article.id}`,{method:'PUT',body:JSON.stringify({document:article.document,slug:article.slug,revision:article.revision})});
    article.revision=result.revision;saved=version;
   }
+  failed=false;
   message('Saved');
   if(redraw || needsPreview){needsPreview=false;renderPreview();}
  })();
@@ -32,6 +33,7 @@ function field(label,value,tag='input'){
  const wrap=text('label',label),input=document.createElement(tag);input.value=value;wrap.append(input);return {wrap,input};
 }
 function edit(data){
+ previewObserver?.disconnect();
  article=data;change=saved=0;app.replaceChildren();publish.hidden=false;publish.textContent=article.publishedAt?'Update published post':'Publish';
  const tools=document.createElement('div');tools.className='edit-tools';
  const path=field('Address',article.slug);path.input.style.width='240px';path.input.disabled=!!article.publishedAt;
@@ -68,7 +70,7 @@ function edit(data){
  const preview=document.createElement('div');preview.style.cssText='overflow:hidden;height:75vh;min-width:0';frame=document.createElement('iframe');frame.dataset.width='1040';frame.className='preview';frame.title='Article preview; drag doodles to arrange them';preview.append(frame);
  workspace.append(source,preview);app.append(workspace);
  function sizePreview(){const width=Number(frame.dataset.width),scale=Math.min(1,preview.clientWidth/width);frame.style.width=width+'px';frame.style.height=(preview.clientHeight/scale)+'px';frame.style.transform=`scale(${scale})`;frame.style.transformOrigin='top left';}
- new ResizeObserver(sizePreview).observe(preview);sizePreview();renderPreview();
+ previewObserver=new ResizeObserver(sizePreview);previewObserver.observe(preview);sizePreview();renderPreview();
  window.onmessage=event=>{
   if(event.origin!==location.origin||event.source!==frame.contentWindow)return;
   if(event.data?.type==='article-layout'){article.document.layout=event.data.layout;changed();}

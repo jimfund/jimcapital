@@ -48,7 +48,7 @@ export function svg(d) {
 function sections(markdown) {
  const html=md.render(markdown);
  // Preserve ordered numbering while leaving room for drawings beside every six ideas.
- if(/^<ol>\n/.test(html)&&html.endsWith('</ol>\n')&&!html.includes('<ol>',5)) {
+ if(/^<ol>\n/.test(html)&&html.endsWith('</ol>\n')&&!html.includes('<ol>',5)&&!html.includes('<ul>')) {
   const items=html.match(/<li>[\s\S]*?<\/li>/g)||[];
   if(items.length) return Array.from({length:Math.ceil(items.length/6)},(_,i)=>`<ol start="${i*6+1}">${items.slice(i*6,i*6+6).join('')}</ol>`);
  }
