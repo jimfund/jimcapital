@@ -19,8 +19,10 @@ export function createClock3D(host, { displayStyle = 'classic' } = {}) {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 20);
   camera.position.z = 4.5;
+  const presentation = new THREE.Group();
   const sculpture = new THREE.Group();
-  scene.add(sculpture);
+  presentation.add(sculpture);
+  scene.add(presentation);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x313139, 2));
   const key = new THREE.DirectionalLight(0xffffff, 4);
   key.position.set(-3, 4, 5);
@@ -162,17 +164,38 @@ export function createClock3D(host, { displayStyle = 'classic' } = {}) {
   let flaps;
   let frame = 0;
   let contextLost = false;
+  const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let hoverAmount = 0, hoverFrom = 0, hoverTarget = 0, hoverStarted = 0;
   const render = () => {
     if (frame || contextLost || document.hidden) return;
     frame = requestAnimationFrame(now => {
       frame = 0;
+      const progress = Math.min(1, Math.max(0, (now - hoverStarted) / 240));
+      hoverAmount = hoverFrom + (hoverTarget - hoverFrom) * (1 - (1 - progress) ** 3);
+      presentation.rotation.set(-hoverAmount * .02, hoverAmount * .045, 0);
       const moving = flaps?.animate(now);
       renderer.render(scene, camera);
-      if (moving) render();
+      if (moving || (progress < 1 && hoverFrom !== hoverTarget)) render();
     });
   };
+  function hover(target) {
+    if (target === hoverTarget) return;
+    hoverFrom = hoverAmount;
+    hoverTarget = target;
+    hoverStarted = performance.now();
+    render();
+  }
+  host.addEventListener('pointerenter', event => {
+    if (event.pointerType === 'mouse' && !preference.matches) hover(1);
+  });
+  host.addEventListener('pointerleave', () => hover(0));
+  host.addEventListener('pointercancel', () => hover(0));
+  preference.addEventListener('change', () => {
+    if (!preference.matches) return;
+    hoverAmount = hoverFrom = hoverTarget = 0;
+    render();
+  });
   if (mechanical) {
-    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
     flaps = createFlapDisplay(back, { invalidate: render, reducedMotion: () => preference.matches });
   }
   function resize() {
