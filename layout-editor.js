@@ -19,10 +19,10 @@ export function startEditor() {
     <input type="range" min="32" max="1200" aria-label="↔">
     <button data-action="back" aria-label="↧">↧</button>
     <button data-action="front" aria-label="↥">↥</button>
-    <button data-action="delete" aria-label="Delete selected doodle" title="Delete selected doodle (Delete)">Delete</button>
+    <button data-action="delete" aria-label="Delete selected doodle">Delete</button>
     <button data-action="undo" aria-label="↶">↶</button>
     <button data-action="redo" aria-label="↷">↷</button>
-    <button data-action="recover" aria-label="Restore previous unsaved doodle" title="Restore previous unsaved doodle" hidden>↺</button>
+    <button data-action="recover" aria-label="Restore previous unsaved doodle" hidden>↺</button>
     <button data-action="save" aria-label="✓">✓</button>
     <a href="./" aria-label="jim.capital">↗</a>`;
   document.body.append(toolbar);

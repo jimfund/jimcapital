@@ -9,9 +9,6 @@ if (params.has('popout') || embedded || params.get('edit') === '1') {
 
 let popup;
 const supportsPinning = 'documentPictureInPicture' in window;
-button.title = supportsPinning
-  ? 'Keep jim.capital in an always-on-top window'
-  : 'Open jim.capital in a separate window';
 
 button.addEventListener('click', async () => {
   status.textContent = '';
@@ -39,7 +36,7 @@ button.addEventListener('click', async () => {
     style.textContent = 'html, body { margin: 0; height: 100%; background: white; } iframe { display: block; width: 100%; height: 100%; border: 0; }';
     pip.document.head.append(style);
     const frame = pip.document.createElement('iframe');
-    frame.title = 'jim.capital';
+    frame.setAttribute('aria-label', 'jim.capital');
     frame.src = url.href;
     pip.document.body.append(frame);
     button.textContent = '↗ Show popout';

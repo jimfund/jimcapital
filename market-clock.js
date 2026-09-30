@@ -74,7 +74,6 @@ function update() {
   const statusText = rows?.map(row => `${row.key} ${row.localTime}: ${row.text}`).join('. ')
     || 'Checking market calendar';
   spinButton.setAttribute('aria-label', `${rotationLabel} ${statusText}`);
-  spinButton.title = statusText;
   reverse.replaceChildren(...(rows || [{ key: 'JP', text: 'Checking…' }, { key: 'US', text: 'Checking…' }]).map(row => {
     const line = document.createElement('span');
     const title = document.createElement('strong');
