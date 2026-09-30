@@ -19,13 +19,15 @@ function select(figure) {
 function render() {
   for (const figure of figures) {
     const deleted = (layout.deleted ?? []).includes(idFor(figure));
-    // Keep its original space so deleting a doodle doesn't shift the article or other drawings.
+    // Keep the positioning anchor stable when hiding or restoring a drawing.
     figure.style.visibility = deleted ? 'hidden' : '';
     figure.setAttribute('aria-hidden', String(deleted || !local));
     figure.querySelector('img').tabIndex = local && !deleted ? 0 : -1;
     const width = layout[mode()][idFor(figure)]?.width;
     const img = figure.querySelector('img');
-    figure.style.width = width ? `${width + 14}px` : '';
+    const style = getComputedStyle(figure);
+    const padding = (parseFloat(style.paddingLeft) || 0) + (parseFloat(style.paddingRight) || 0);
+    figure.style.width = width ? `${width + padding}px` : '';
     img.style.width = width ? `${width}px` : '';
     img.style.height = width ? 'auto' : '';
     img.style.maxHeight = width ? 'none' : '';

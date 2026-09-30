@@ -31,13 +31,13 @@ footer { margin: 36px 20px 0; padding: 18px 0; font: 12px/1.5 'Courier New', mon
 @media (max-width: 760px) {
   body { padding: 16px 10px 36px; }
   header { padding: 32px 12px 24px; }
-  .article-section { grid-template-columns: 1fr 1fr; }
+  .article-section { position: relative; grid-template-columns: 1fr; }
   .article-section > .prose { grid-column: 1 / -1; grid-row: 1; padding: 0 14px; }
   .prose { font-size: 18px; }
-  .decoration { grid-row: 2; padding: 15px 18px; }
-  .decoration.left { grid-column: 1; }
-  .decoration.right { grid-column: 2; }
-  .decoration img { height: 140px; }
+  .article-section > .decoration { position: absolute; top: 50%; width: 45%; padding: 0; }
+  .article-section > .decoration.left { left: 0; }
+  .article-section > .decoration.right { right: 0; }
+  .decoration img { height: auto; }
   .breadcrumbs { padding: 10px 12px; }
 }
 @media print {
