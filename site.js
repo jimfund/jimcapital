@@ -120,6 +120,7 @@ async function init() {
   addItem('angel', main.querySelector('.frame'), 316);
   addItem('monitor', monitor, 400, true);
   addItem('softbank', main.querySelector('.softbank-tracker'), 300);
+  addItem('clock', main.querySelector('.market-clock'), 300);
   if (isDrawing(monitorDrawing)) items.get('monitor').drawing = monitorDrawing;
   const ids = Array.isArray(manifest.ids) ? [...new Set(manifest.ids.filter(validId))].slice(0, 100) : [];
   const drawings = await Promise.all(ids.map(id => read(`assets/doodles/${id}.json`, null)));
@@ -144,7 +145,7 @@ async function init() {
   if (['localhost', '127.0.0.1'].includes(location.hostname) && !editing && !new URLSearchParams(location.search).has('popout') && window.self === window.top) {
     const link = document.createElement('a');
     link.className = 'edit-entry';
-    link.href = '?edit=1';
+    link.href = '?edit=1&fresh=1';
     link.textContent = '↔';
     link.setAttribute('aria-label', '↔');
     document.body.append(link);

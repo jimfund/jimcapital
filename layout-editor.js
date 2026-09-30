@@ -22,6 +22,7 @@ export function startEditor() {
     <button data-action="delete" aria-label="Delete selected doodle" title="Delete selected doodle (Delete)">Delete</button>
     <button data-action="undo" aria-label="↶">↶</button>
     <button data-action="redo" aria-label="↷">↷</button>
+    <button data-action="recover" aria-label="Restore previous unsaved doodle" title="Restore previous unsaved doodle" hidden>↺</button>
     <button data-action="save" aria-label="✓">✓</button>
     <a href="./" aria-label="jim.capital">↗</a>`;
   document.body.append(toolbar);
@@ -29,15 +30,18 @@ export function startEditor() {
   const size = toolbar.querySelector('[type="range"]');
   const color = toolbar.querySelector('[type="color"]');
   const key = 'jimcapital.canvas.draft.v1';
+  const recoveryKey = 'jimcapital.canvas.recovery.v1';
   const past = [], future = [];
   let selected = 'monitor', mode = 'move', active = null;
   let drag, inkPointer = null, stroke, resizing = false, scheduled = false;
   let penColor = '#111111', penWidth = 3, eraserWidth = 24;
+  let baseScene = JSON.stringify(scene());
+  let recovery = null;
 
   function scene() {
     return { version: 1, layout: structuredClone(layout), drawings: Object.fromEntries([...items].filter(([, item]) => item.drawing).map(([id, item]) => [id, structuredClone(item.drawing)])) };
   }
-  function snapshot() { return { ...scene(), selected, mode, active: structuredClone(active) }; }
+  function snapshot() { return { ...scene(), baseScene, selected, mode, active: structuredClone(active) }; }
   function remember() {
     past.push(snapshot());
     if (past.length > 40) past.shift();
@@ -102,8 +106,9 @@ export function startEditor() {
       else attach(addDoodle(id, structuredClone(drawing), saved.layout.items[id]));
     }
     const restoredLayout = structuredClone(saved.layout);
-    // Drafts from before the 9984 tracker was added have no position for it.
+    // Older drafts have no positions for newly added widgets.
     restoredLayout.items.softbank ||= structuredClone(layout.items.softbank);
+    restoredLayout.items.clock ||= structuredClone(layout.items.clock);
     applyLayout(restoredLayout);
     selected = items.has(saved.selected) ? saved.selected : 'monitor';
     mode = ['move', 'pen', 'eraser', 'number'].includes(saved.mode) ? saved.mode : 'move';
@@ -251,9 +256,12 @@ export function startEditor() {
     try {
       const response = await fetch('/__scene', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: serialized, signal: AbortSignal.timeout(15000) });
       if (!response.ok) throw new Error();
+      baseScene = serialized;
       if (JSON.stringify(scene()) === serialized && !active?.strokes?.length) {
         buttons.save.dataset.state = 'saved';
         try { localStorage.removeItem(key); localStorage.removeItem('jimcapital.layout.draft.v1'); } catch {}
+      } else {
+        draft();
       }
     } catch { draft(); buttons.save.dataset.state = 'error'; }
     finally { buttons.save.disabled = false; }
@@ -277,16 +285,31 @@ export function startEditor() {
       layout.items[selected] = constrain(position); applyLayout(); draft(); controls();
     }
   });
+  buttons.recover.addEventListener('click', () => {
+    if (!recovery || drag || inkPointer !== null) return;
+    remember();
+    if (restore(recovery)) { draft(); controls(); }
+  });
   try {
     const saved = JSON.parse(localStorage.getItem(key));
-    if (!saved || !restore(saved)) {
+    recovery = JSON.parse(localStorage.getItem(recoveryKey));
+    const fresh = new URLSearchParams(location.search).get('fresh') === '1';
+    if (saved && (fresh || saved.baseScene !== baseScene)) {
+      // Keep old work recoverable without replacing the current page's layout.
+      localStorage.setItem(recoveryKey, JSON.stringify(saved));
+      recovery = saved;
+    } else if (saved) {
+      restore(saved);
+    }
+    if (!saved && !recovery) {
       const previous = JSON.parse(localStorage.getItem('jimcapital.layout.draft.v1'));
       if (isLayout(previous)) {
-        for (const id of items.keys()) if (previous.items[id]) layout.items[id] = previous.items[id];
-        applyLayout();
+        recovery = { ...snapshot(), layout: { version: 1, items: { ...layout.items, ...previous.items } } };
+        localStorage.setItem(recoveryKey, JSON.stringify(recovery));
       }
     }
   } catch {}
+  buttons.recover.hidden = !recovery;
   new ResizeObserver(renderOverlay).observe(main);
   controls(); renderOverlay();
 }

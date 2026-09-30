@@ -19,6 +19,7 @@ body.editing { padding-top: 90px; align-items: start; }
 .layout-tools button, .layout-tools a, .edit-entry { display: grid; place-items: center; min-width: 36px; height: 36px; padding: 0 7px; border: none; border-radius: 4px; background: transparent; color: #333; text-decoration: none; font: 22px system-ui, sans-serif; cursor: pointer; }
 .layout-tools button:hover, .layout-tools a:hover, .edit-entry:hover { background: #eee; }
 .layout-tools button:disabled { opacity: .25; cursor: default; }
+.layout-tools [hidden] { display: none; }
 .layout-tools input { width: 90px; accent-color: #333; }
 .layout-tools button:focus-visible, .layout-tools a:focus-visible, .edit-entry:focus-visible { outline: 2px solid #828c78; }
 .layout-tools [data-state="saved"] { color: #377a45; background: #e5eee3; }

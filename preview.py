@@ -57,10 +57,10 @@ def valid_layout(data):
     if not isinstance(data, dict) or data.get("version") != 1:
         return False
     items = data.get("items")
-    if not isinstance(items, dict) or len(items) > 104:
+    if not isinstance(items, dict) or len(items) > 105:
         return False
     for key, item in items.items():
-        if key not in ("prediction", "angel", "monitor", "softbank") and not DOODLE_ID.fullmatch(key):
+        if key not in ("prediction", "angel", "monitor", "softbank", "clock") and not DOODLE_ID.fullmatch(key):
             return False
         if not isinstance(item, dict):
             return False
@@ -85,9 +85,11 @@ def valid_scene(data):
         if key not in data["layout"]["items"] or not valid_drawing(drawing):
             return False
     expected = {"prediction", "angel"} | set(drawings)
-    # Older open editors can still save scenes without the new tracker.
+    # Older open editors can still save scenes without newer widgets.
     if "softbank" in data["layout"]["items"]:
         expected.add("softbank")
+    if "clock" in data["layout"]["items"]:
+        expected.add("clock")
     return set(data["layout"]["items"]) == expected
 
 
@@ -106,6 +108,11 @@ def atomic_json(destination, data):
 
 
 class PreviewHandler(SimpleHTTPRequestHandler):
+    def end_headers(self):
+        # The editor and preview must use the same current scripts and artwork.
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
     def do_POST(self):
         drawing_id = self.path.removeprefix("/__doodles/") if self.path.startswith("/__doodles/") else None
         if self.path not in ("/__doodle", "/__layout", "/__scene") and (not drawing_id or not DOODLE_ID.fullmatch(drawing_id)):
