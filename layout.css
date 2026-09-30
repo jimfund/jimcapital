@@ -1,5 +1,8 @@
 .site-item { flex: 0 0 auto; max-width: 100%; position: relative; transform-origin: top left; }
 .site-item > .frame, .site-item > .monitor { width: 100%; }
+.one-word-link { display: block; position: relative; width: 85px; aspect-ratio: 1; overflow: hidden; }
+.one-word-link img { width: 1000%; max-width: none; height: auto; pointer-events: none; }
+.one-word-link:focus-visible { outline: 2px solid #828c78; outline-offset: 4px; }
 .softbank-tracker { width: 300px; color: #111; }
 #softbank-price { display: block; margin: 0; font: 24px/1 "Courier New", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .doodled-monitor { position: relative; aspect-ratio: 4 / 3; }

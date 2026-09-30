@@ -109,6 +109,7 @@ export function startEditor() {
     // Older drafts have no positions for newly added widgets.
     restoredLayout.items.softbank ||= structuredClone(layout.items.softbank);
     restoredLayout.items.clock ||= structuredClone(layout.items.clock);
+    restoredLayout.items['one-word'] ||= structuredClone(layout.items['one-word']);
     applyLayout(restoredLayout);
     selected = items.has(saved.selected) ? saved.selected : 'monitor';
     mode = ['move', 'pen', 'eraser', 'number'].includes(saved.mode) ? saved.mode : 'move';

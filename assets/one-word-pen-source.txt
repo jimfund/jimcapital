@@ -1,0 +1,4 @@
+Original fountain pen GIF:
+https://web.archive.org/web/20091020155852im_/http://geocities.com/SoHo/Veranda/3852/office1/67.gif
+
+one-word-pen-frames.png contains its ten composited 85 × 85 frames in order, with transparency preserved. The first nine frames last 100 ms each; the original final frame lasts 400 ms before looping. The homepage holds that last frame while hovered or keyboard focused.

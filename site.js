@@ -1,5 +1,6 @@
 import { drawStrokes, placeNumber, isDrawing } from './drawing.js';
 import { WORLD, isLayout, defaultPosition, validId, fitScene } from './layout-model.js';
+import { animatePenLink } from './pen-link.js';
 
 const main = document.querySelector('main');
 export const editing = new URLSearchParams(location.search).get('edit') === '1'
@@ -111,6 +112,7 @@ export function applyLayout(next = layout) {
 }
 
 async function init() {
+  animatePenLink(main.querySelector('.one-word-link'));
   const [monitorDrawing, manifest, saved] = await Promise.all([
     read('assets/monitor-doodle.json', null), read('assets/doodles.json', { ids: [] }), read('assets/layout.json', null),
   ]);
@@ -121,6 +123,7 @@ async function init() {
   addItem('monitor', monitor, 400, true);
   addItem('softbank', main.querySelector('.softbank-tracker'), 300);
   addItem('clock', main.querySelector('.market-clock'), 300);
+  addItem('one-word', main.querySelector('.one-word-link'), 85);
   if (isDrawing(monitorDrawing)) items.get('monitor').drawing = monitorDrawing;
   const ids = Array.isArray(manifest.ids) ? [...new Set(manifest.ids.filter(validId))].slice(0, 100) : [];
   const drawings = await Promise.all(ids.map(id => read(`assets/doodles/${id}.json`, null)));
