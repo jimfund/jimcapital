@@ -81,30 +81,8 @@
       <div class="frame">
         <img src="assets/angel-prayers.gif" width="268" height="414" alt="" loading="eager">
       </div>
-      <section class="monitor" data-design="1" data-state="pending" aria-label="SPX">
-        <div class="cabinet">
-          <div class="bezel">
-            <div class="screen">
-              <div class="screen-meta">
-                <span class="symbol">SPX</span>
-                <a class="market" href="https://app.hyperliquid.xyz/trade/xyz:SP500">xyz:SP500</a>
-              </div>
-              <output class="price" id="spx-price">—</output>
-              <div class="change" id="spx-change">—</div>
-              <div class="ticker" aria-hidden="true">
-                <div class="ticker-track">
-                  <span data-ticker>SPX · — · SPX · — ·</span>
-                  <span data-ticker>SPX · — · SPX · — ·</span>
-                </div>
-              </div>
-              <time class="quote-time" id="spx-time">—</time>
-            </div>
-          </div>
-          <div class="monitor-controls" aria-hidden="true">
-            <div class="vents"></div>
-            <div class="power"></div>
-          </div>
-        </div>
+      <section class="monitor doodled-monitor" data-state="pending" aria-label="SPX">
+        <output class="doodle-number" id="spx-price">—</output>
       </section>
       <section class="softbank-tracker" data-state="pending" aria-label="SoftBank 9984 estimated price in yen">
         <output id="softbank-price">—</output>
@@ -118,12 +96,6 @@
         </svg>
       </section>
     </main>
-    <script>
-      const design = new URLSearchParams(location.search).get("crt");
-      if (["1", "2", "3"].includes(design)) {
-        document.querySelector(".monitor").dataset.design = design;
-      }
-    </script>
     <script src="popout.js" defer></script>
     <script src="ticker.js" defer></script>
     <script src="market-clock.js" type="module"></script>

@@ -1,9 +1,6 @@
 (() => {
   const monitor = document.querySelector('.monitor');
   const price = document.querySelector('#spx-price');
-  const change = document.querySelector('#spx-change');
-  const time = document.querySelector('#spx-time');
-  const tape = document.querySelectorAll('[data-ticker]');
   const softbank = document.querySelector('.softbank-tracker');
   const softbankPrice = document.querySelector('#softbank-price');
   const number = new Intl.NumberFormat('en-US', {
@@ -23,15 +20,6 @@
     monitor.dataset.state = 'offline';
     price.textContent = '—';
     document.querySelectorAll('[data-spx-price]').forEach(output => { output.textContent = '—'; });
-    if (change) {
-      change.textContent = '—';
-      delete change.dataset.direction;
-    }
-    if (time) {
-      time.textContent = '—';
-      time.removeAttribute('datetime');
-    }
-    tape.forEach((item) => { item.textContent = 'SPX · — · SPX · — ·'; });
   };
 
   const clearSoftbank = () => {
@@ -77,24 +65,10 @@
       const context = getContext('xyz:SP500');
       const current = positiveNumber(context?.markPx);
       if (!Number.isFinite(current)) { clearSpx(); return; }
-      const previous = positiveNumber(context?.prevDayPx);
-      const percent = (current / previous - 1) * 100;
       const formatted = number.format(current);
 
       price.textContent = formatted;
       document.querySelectorAll('[data-spx-price]').forEach(output => { output.textContent = formatted; });
-      if (change) {
-        change.textContent = Number.isFinite(percent)
-          ? `${percent < 0 ? '−' : '+'}${number.format(Math.abs(percent))}% · 24h`
-          : '—';
-        change.dataset.direction = percent < 0 ? 'down' : 'up';
-      }
-      tape.forEach((item) => { item.textContent = `SPX · ${formatted} · SPX · ${formatted} ·`; });
-      if (time) {
-        const now = new Date();
-        time.dateTime = now.toISOString();
-        time.textContent = now.toLocaleTimeString('en-GB', { timeZone: 'UTC', hour12: false }) + ' UTC';
-      }
       monitor.dataset.state = 'live';
     } catch {
       clearQuote();
