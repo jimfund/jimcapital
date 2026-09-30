@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clock designs — jim.capital</title>
+  <link rel="stylesheet" href="market-clock.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 24px; color: #111; background: #fff; font: 15px/1.5 system-ui, sans-serif; }
+    header, main { max-width: 1040px; margin: auto; }
+    header { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px 32px; margin-bottom: 32px; }
+    h1 { margin: 0; font-size: 22px; font-weight: 500; }
+    header a { margin-left: auto; }
+    a { color: inherit; text-underline-offset: 4px; }
+    label { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+    input { accent-color: #111; width: 100px; }
+    main { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 225px), 1fr)); gap: 40px 16px; }
+    article { text-align: center; min-width: 0; }
+    .clock-spin { width: var(--clock-size, 150px); max-width: 100%; margin: auto; }
+    h2 { font-size: 15px; font-weight: 500; margin: 18px 0 6px; }
+    article a { font-size: 13px; }
+    .replay-flaps { display: block; margin: 12px auto 0; padding: 5px 12px; color: #111; background: #fff; border: 1px solid #bbb; border-radius: 4px; font: inherit; cursor: pointer; }
+    .note { max-width: 1040px; margin: 32px auto 0; color: #555; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Clock backs</h1>
+    <label>Size <input id="size" type="range" min="150" max="240" value="150" step="10"><output id="size-value">150px</output></label>
+    <a href="/">Back to the page</a>
+  </header>
+  <main id="designs"></main>
+  <p class="note">Click to spin to the other face. Drag to spin by hand.</p>
+  <script type="module" src="clock-designs.js"></script>
+</body>
+</html>
