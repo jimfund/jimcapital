@@ -57,10 +57,10 @@ def valid_layout(data):
     if not isinstance(data, dict) or data.get("version") != 1:
         return False
     items = data.get("items")
-    if not isinstance(items, dict) or len(items) > 108:
+    if not isinstance(items, dict) or len(items) > 107:
         return False
     for key, item in items.items():
-        if key not in ("prediction", "angel", "monitor", "softbank", "softbank-calls", "clock", "one-word", "ai-ticker") and not DOODLE_ID.fullmatch(key):
+        if key not in ("prediction", "angel", "monitor", "softbank", "clock", "one-word", "ai-ticker") and not DOODLE_ID.fullmatch(key):
             return False
         if not isinstance(item, dict):
             return False
@@ -88,8 +88,6 @@ def valid_scene(data):
     # Older open editors can still save scenes without newer widgets.
     if "softbank" in data["layout"]["items"]:
         expected.add("softbank")
-    if "softbank-calls" in data["layout"]["items"]:
-        expected.add("softbank-calls")
     if "clock" in data["layout"]["items"]:
         expected.add("clock")
     if "one-word" in data["layout"]["items"]:

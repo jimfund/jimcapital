@@ -4,17 +4,6 @@
 .one-word-link img { width: 1000%; max-width: none; height: auto; pointer-events: none; }
 .one-word-link:focus-visible { outline: 2px solid #828c78; outline-offset: 4px; }
 .softbank-tracker { width: 300px; color: #111; }
-.softbank-calls { width: 680px; color: #222; font: 15px/1.5 "Courier New", monospace; font-variant-numeric: tabular-nums; }
-.softbank-calls h2 { margin: 0; font: bold 22px/1.3 "Courier New", monospace; }
-.softbank-calls p { margin: 6px 0 14px; }
-.softbank-calls table { width: 100%; border-collapse: collapse; }
-.softbank-calls caption { text-align: left; padding-bottom: 8px; }
-.softbank-calls th, .softbank-calls td { text-align: right; padding: 7px 0 7px 16px; white-space: nowrap; }
-.softbank-calls tr > :first-child { text-align: left; padding-left: 0; }
-.softbank-calls thead { border-bottom: 1px solid #aaa; font-size: 13px; }
-.softbank-calls tbody th { font-weight: normal; }
-.softbank-calls tfoot { border-top: 1px solid #aaa; font-weight: bold; }
-.softbank-calls .calls-note { margin-top: 14px; color: #666; font-size: 12px; }
 .ai-ticker { width: 102px; overflow: hidden; font: bold 34px/1.2 "Courier New", monospace; font-variant-numeric: tabular-nums; }
 .ticker-track { display: flex; width: max-content; animation: ticker-tape 34s linear infinite; }
 .ticker-copy { display: flex; align-items: baseline; gap: 3ch; padding-right: 3ch; flex: none; }

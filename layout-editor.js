@@ -108,7 +108,6 @@ export function startEditor() {
     const restoredLayout = structuredClone(saved.layout);
     // Older drafts have no positions for newly added widgets.
     restoredLayout.items.softbank ||= structuredClone(layout.items.softbank);
-    restoredLayout.items['softbank-calls'] ||= structuredClone(layout.items['softbank-calls']);
     restoredLayout.items.clock ||= structuredClone(layout.items.clock);
     restoredLayout.items['one-word'] ||= structuredClone(layout.items['one-word']);
     restoredLayout.items['ai-ticker'] ||= structuredClone(layout.items['ai-ticker']);
