@@ -4,6 +4,28 @@
 .one-word-link img { width: 1000%; max-width: none; height: auto; pointer-events: none; }
 .one-word-link:focus-visible { outline: 2px solid #828c78; outline-offset: 4px; }
 .softbank-tracker { width: 300px; color: #111; }
+.ai-ticker { width: 102px; overflow: hidden; font: bold 34px/1.2 "Courier New", monospace; font-variant-numeric: tabular-nums; }
+.ticker-track { display: flex; width: max-content; animation: ticker-tape 34s linear infinite; }
+.ticker-copy { display: flex; align-items: baseline; gap: 3ch; padding-right: 3ch; flex: none; }
+.ai-quote { display: flex; align-items: baseline; gap: 1ch; white-space: nowrap; flex: none; color: var(--ink); }
+.anth-readout { --ink: #b52d28; }
+.oa-readout { --ink: #1681a5; }
+.btc-readout { --ink: #176c39; }
+.ai-symbol { font: inherit; }
+.ai-quote output { width: 7ch; }
+.btc-readout output { width: 11ch; }
+@supports (background-clip: text) {
+  .ai-symbol, .ai-quote output { background: radial-gradient(circle, var(--ink) 1px, transparent 1.15px) 0 0 / 3px 3px; background-clip: text; -webkit-background-clip: text; color: transparent; }
+}
+.ai-quote[data-state="offline"] { --ink: #8b9390; }
+.ai-ticker:hover .ticker-track, .ai-ticker:focus .ticker-track { animation-play-state: paused; }
+.ai-ticker:focus-visible { outline: 1px dotted #888; outline-offset: 3px; }
+@keyframes ticker-tape { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-ticker { overflow-x: auto; scrollbar-width: none; }
+  .ticker-track { animation: none; }
+  .ticker-copy[aria-hidden="true"] { display: none; }
+}
 #softbank-price { display: block; margin: 0; font: 24px/1 "Courier New", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .doodled-monitor { position: relative; aspect-ratio: 4 / 3; }
 .doodled-monitor canvas { display: block; width: 100%; height: 100%; }

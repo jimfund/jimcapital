@@ -17,8 +17,8 @@ export const validId = value => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4
 export function isLayout(value) {
   const inRange = (v, low, high) => typeof v === 'number' && Number.isFinite(v) && v >= low && v <= high;
   return value?.version === 1 && value.items && typeof value.items === 'object' && !Array.isArray(value.items)
-    && Object.keys(value.items).length <= 106
-    && Object.entries(value.items).every(([id, item]) => (['prediction', 'angel', 'monitor', 'softbank', 'clock', 'one-word'].includes(id) || validId(id))
+    && Object.keys(value.items).length <= 107
+    && Object.entries(value.items).every(([id, item]) => (['prediction', 'angel', 'monitor', 'softbank', 'clock', 'one-word', 'ai-ticker'].includes(id) || validId(id))
       && item && inRange(item.x, 0, WORLD) && inRange(item.y, 0, 6000)
       && inRange(item.width, 32, WORLD) && inRange(item.z, 0, 10000) && item.x + item.width <= WORLD + .001);
 }
@@ -33,5 +33,6 @@ export function defaultPosition(id, index) {
   if (id === 'softbank') return { x: 760, y: 800, width: 300, z: 4 };
   if (id === 'clock') return { x: 990, y: 15, width: 150, z: 5 };
   if (id === 'one-word') return { x: 810, y: 280, width: 85, z: 10 };
+  if (id === 'ai-ticker') return { x: 520, y: 735, width: 102, z: 10 };
   return { x: 40 + (index % 3) * 390, y: 600 + Math.floor(index / 3) * 320, width: 320, z: index + 4 };
 }
