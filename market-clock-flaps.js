@@ -1,7 +1,8 @@
 import * as THREE from './assets/vendor/three/three.module.min.js';
+import { canCatchFlaps, stepFlap } from './market-clock-flap-physics.js';
 
-// One physical leaf folds down around the centre hinge: old top on its front,
-// new bottom on its reverse. The fixed halves behind it finish the new glyph.
+// The visible digit halves are hinged panels. A separate feed leaf advances a
+// character while the panels are caught in their normal reading positions.
 export function createFlapDisplay(parent, { invalidate, reducedMotion = () => false }) {
   const group = new THREE.Group();
   group.name = 'hinged-countdowns';
@@ -10,6 +11,9 @@ export function createFlapDisplay(parent, { invalidate, reducedMotion = () => fa
   const cache = new Map();
   const rows = [[], []];
   const texts = ['', ''];
+  const orientation = new THREE.Quaternion();
+  const gravity = new THREE.Vector3();
+  let lastFrame = null;
   const dark = new THREE.MeshStandardMaterial({ color: 0x101010, roughness: .55, metalness: .15 });
   const metal = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: .25, metalness: .8 });
 
@@ -35,18 +39,29 @@ export function createFlapDisplay(parent, { invalidate, reducedMotion = () => fa
     cache.set(key, material);
     return material;
   }
-  function makeCell(x, y, width) {
+  function makeCell(x, y, width, index, previous) {
     const cell = new THREE.Group(); cell.name = 'flap-cell'; cell.position.set(x, y, 0); group.add(cell);
     const height = .35, w = width - .012;
     const casing = new THREE.Mesh(new THREE.BoxGeometry(w + .008, height + .014, .035), dark);
     cell.add(casing);
-    function half(y) {
-      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, height / 2 - .003), glyph(' ', 'top'));
-      mesh.position.set(0, y, .023); cell.add(mesh); return mesh;
+    function half(side, name, old) {
+      const hinge = new THREE.Group(); hinge.name = `${name}-hinge`;
+      hinge.position.set(0, side * .004, .028); cell.add(hinge);
+      const body = new THREE.Mesh(new THREE.BoxGeometry(w, height / 2 - .007, .012), dark);
+      body.position.y = side * height / 4; hinge.add(body);
+      const geometry = new THREE.PlaneGeometry(w, height / 2 - .007);
+      geometry.translate(0, side * height / 4, .0065);
+      const face = new THREE.Mesh(geometry, glyph(' ', name)); face.name = `${name}-face`; hinge.add(face);
+      const backGeometry = geometry.clone(); backGeometry.translate(0, 0, -.013);
+      const uv = backGeometry.getAttribute('uv');
+      for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+      const back = new THREE.Mesh(backGeometry, glyph(' ', name, true)); hinge.add(back);
+      const motion = old ? { ...old.motion } : { angle: 0, velocity: 0, latched: true, moving: false };
+      hinge.rotation.x = side * motion.angle;
+      return { hinge, face, back, side, motion, variation: .94 + ((index * 7 + side + 1) % 11) * .012 };
     }
-    const top = half(height / 4), bottom = half(-height / 4);
-    top.name = 'fixed-top'; bottom.name = 'fixed-bottom';
-    const pivot = new THREE.Group(); pivot.name = 'hinge'; pivot.position.z = .035; cell.add(pivot);
+    const top = half(1, 'top', previous?.top), bottom = half(-1, 'bottom', previous?.bottom);
+    const pivot = new THREE.Group(); pivot.name = 'feed-hinge'; pivot.position.z = .044; cell.add(pivot);
     const leaf = new THREE.Mesh(new THREE.BoxGeometry(w, height / 2 - .003, .012), dark);
     leaf.position.y = height / 4; pivot.add(leaf);
     const frontGeometry = new THREE.PlaneGeometry(w, height / 2 - .003);
@@ -61,12 +76,17 @@ export function createFlapDisplay(parent, { invalidate, reducedMotion = () => fa
       pin.rotation.z = Math.PI / 2; pin.position.set(side * w / 2, 0, .035); cell.add(pin);
     }
     pivot.visible = false;
-    return { cell, top, bottom, pivot, front, reverse, character: ' ', next: ' ', start: null };
+    return { cell, top, bottom, pivot, front, reverse, character: null, next: ' ', start: null, pending: null };
+  }
+  function faces(cell, character) {
+    cell.top.face.material = glyph(character, 'top');
+    cell.top.back.material = glyph(character, 'bottom', true);
+    cell.bottom.face.material = glyph(character, 'bottom');
+    cell.bottom.back.material = glyph(character, 'top', true);
   }
   function finish(cell) {
     cell.character = cell.next;
-    cell.top.material = glyph(cell.next, 'top');
-    cell.bottom.material = glyph(cell.next, 'bottom');
+    faces(cell, cell.next);
     cell.pivot.visible = false;
     cell.start = null;
   }
@@ -74,8 +94,7 @@ export function createFlapDisplay(parent, { invalidate, reducedMotion = () => fa
     if (cell.start !== null) finish(cell);
     cell.next = character;
     if (reducedMotion()) { finish(cell); return; }
-    cell.top.material = glyph(cell.character, 'top');
-    cell.bottom.material = glyph(cell.character, 'bottom');
+    faces(cell, cell.character);
     cell.front.material = glyph(cell.character, 'top');
     cell.reverse.material = glyph(character, 'bottom', true);
     cell.pivot.rotation.x = 0;
@@ -89,14 +108,18 @@ export function createFlapDisplay(parent, { invalidate, reducedMotion = () => fa
         if (text === texts[i]) continue;
         texts[i] = text;
         if (rows[i].length !== text.length) {
-          for (const old of rows[i]) {
+          const previous = rows[i];
+          for (const old of previous) {
             old.cell.traverse(node => node.geometry?.dispose()); group.remove(old.cell);
           }
           const width = Math.min(.252, 1.52 / text.length);
-          rows[i] = [...text].map((_, j) => makeCell((j - (text.length - 1) / 2) * width, (.5 - (377 + i * 390) / 1024) * 2.05, width));
+          rows[i] = [...text].map((_, j) => makeCell((j - (text.length - 1) / 2) * width, (.5 - (377 + i * 390) / 1024) * 2.05, width, j + i * 17, previous[j] || previous[0]));
         }
         rows[i].forEach((cell, j) => {
-          if (cell.next !== text[j]) turn(cell, text[j], now, j * 42 + i * 85);
+          if (cell.character === null) { cell.next = text[j]; finish(cell); }
+          else if (cell.pending?.character !== text[j] && cell.next !== text[j]) {
+            cell.pending = { character: text[j], at: now + j * 42 + i * 85 };
+          } else if (cell.next === text[j]) cell.pending = null;
         });
       }
       invalidate();
@@ -104,22 +127,47 @@ export function createFlapDisplay(parent, { invalidate, reducedMotion = () => fa
     replay(now = performance.now()) {
       rows.forEach((row, i) => row.forEach((cell, j) => {
         // Reload the same true value through the hinge, never invent countdown values.
-        turn(cell, cell.next, now, j * 42 + i * 85);
+        cell.pending = { character: cell.pending?.character ?? cell.next, at: now + j * 42 + i * 85 };
       }));
       invalidate();
     },
     animate(now) {
+      // World down expressed in the display's coordinates includes the coin's
+      // spin, its back-face orientation, and the subtle parent hover tilt.
+      parent.getWorldQuaternion(orientation).invert();
+      gravity.set(0, -1, 0).applyQuaternion(orientation);
+      const elapsed = lastFrame === null ? 0 : Math.max(0, (now - lastFrame) / 1000);
+      lastFrame = now;
       let active = false;
       for (const cell of rows.flat()) {
+        if (reducedMotion()) {
+          for (const panel of [cell.top, cell.bottom]) {
+            panel.motion = { angle: 0, velocity: 0, latched: true, moving: false };
+            panel.hinge.rotation.x = 0;
+          }
+          cell.next = cell.pending?.character ?? cell.next;
+          cell.pending = null; finish(cell); continue;
+        }
+        for (const panel of [cell.top, cell.bottom]) {
+          panel.motion = stepFlap(panel.motion, elapsed, gravity, panel);
+          panel.hinge.rotation.x = panel.side * panel.motion.angle;
+          active ||= panel.motion.moving;
+        }
+        const caught = cell.top.motion.latched && cell.bottom.motion.latched && canCatchFlaps(gravity);
+        // Character feeds wait for the retaining clips. An in-flight feed may
+        // finish, but never resets the positions or momentum of the panels.
+        if (cell.pending && caught && cell.start === null) {
+          const pending = cell.pending; cell.pending = null;
+          turn(cell, pending.character, now, Math.max(0, pending.at - now));
+        }
         if (cell.start === null) continue;
-        if (reducedMotion()) { finish(cell); continue; }
         const progress = (now - cell.start) / 520;
         if (progress >= 1) { finish(cell); continue; }
         active = true;
         if (progress < 0) continue;
-        cell.top.material = glyph(cell.next, 'top');
+        cell.top.face.material = glyph(cell.next, 'top');
         cell.pivot.visible = true;
-        // Accelerate under gravity, then cushion the landing on the lower half.
+        // A driven feed advances the character; the exposed panels above use gravity.
         const eased = progress < .75 ? (progress / .75) ** 2 * .94
           : .94 + .06 * Math.sin((progress - .75) / .25 * Math.PI / 2);
         cell.pivot.rotation.x = eased * Math.PI;

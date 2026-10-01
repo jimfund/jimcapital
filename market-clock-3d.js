@@ -215,13 +215,9 @@ export function createClock3D(host, { displayStyle = 'classic' } = {}) {
 
   let sessionKey = '';
   let displayKey = '';
-  let showingBack = false;
   return {
     rotate(degrees) {
       sculpture.rotation.x = degrees * Math.PI / 180;
-      const backVisible = Math.cos(sculpture.rotation.x) < -.65;
-      if (backVisible && !showingBack) flaps?.replay();
-      showingBack = backVisible;
       render();
     },
     replayFlaps() { flaps?.replay(); },
