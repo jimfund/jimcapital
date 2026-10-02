@@ -79,6 +79,7 @@
     <link rel="stylesheet" href="market-clock.css">
     <link rel="stylesheet" href="price-history.css">
     <link rel="stylesheet" href="softbank-chart.css">
+    <link rel="stylesheet" href="airship.css">
   </head>
   <body>
     <main>
@@ -105,21 +106,25 @@
       <a class="one-word-link" href="https://one-word.jim.capital" aria-label="One Word">
         <img src="assets/one-word-pen-frames.png" width="850" height="85" alt="" draggable="false">
       </a>
-      <section class="ai-ticker" data-history="ANTHROPIC" role="link" aria-label="ANTH, OA and BTC · open graphs" tabindex="0">
-        <div class="ticker-track"><div class="ticker-copy">
-        <div class="ai-quote anth-readout" data-history="ANTHROPIC" data-market="ANTHROPIC" aria-label="Anthropic">
-          <span class="ai-symbol">ANTH</span><output>—</output>
+      <section class="ai-ticker market-airship" aria-label="Airship market display: Anthropic, OpenAI and Bitcoin">
+        <img class="airship-artwork" src="assets/market-airship.png" width="1672" height="941" alt="" draggable="false">
+        <div class="airship-display">
+          <div class="airship-heading">MARKET SIGNAL</div>
+          <a class="ai-quote anth-readout" data-market="ANTHROPIC" href="/graphs?symbol=ANTHROPIC&amp;range=1d" aria-label="Anthropic valuation · open price history">
+            <span class="airship-label"><span class="ai-symbol">ANTH</span><span class="airship-unit">VALUATION</span></span><output>—</output>
+          </a>
+          <a class="ai-quote oa-readout" data-market="OPENAI" href="/graphs?symbol=OPENAI&amp;range=1d" aria-label="OpenAI valuation · open price history">
+            <span class="airship-label"><span class="ai-symbol">OA</span><span class="airship-unit">VALUATION</span></span><output>—</output>
+          </a>
+          <a class="ai-quote btc-readout" data-market="BTC" href="/graphs?symbol=BTC&amp;range=1d" aria-label="Bitcoin price in US dollars · open price history">
+            <span class="airship-label"><span class="ai-symbol">BTC</span><span class="airship-unit">USD</span></span><output>—</output>
+          </a>
+          <div class="airship-status" role="status">CONNECTING</div>
         </div>
-        <div class="ai-quote oa-readout" data-history="OPENAI" data-market="OPENAI" aria-label="OpenAI">
-          <span class="ai-symbol">OA</span><output>—</output>
-        </div>
-        <div class="ai-quote btc-readout" data-history="BTC" data-market="BTC" aria-label="Bitcoin price in US dollars">
-          <span class="ai-symbol">BTC</span><output>—</output>
-        </div>
-        </div></div>
       </section>
     </main>
     <script src="ai-ticker.js" type="module"></script>
+    <script src="airship.js" type="module"></script>
     <script src="ticker.js" type="module"></script>
     <script src="history-navigation.js" type="module"></script>
     <script src="softbank-chart.js" type="module"></script>

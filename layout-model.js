@@ -33,6 +33,6 @@ export function defaultPosition(id, index) {
   if (id === 'softbank') return { x: 760, y: 800, width: 300, z: 4 };
   if (id === 'clock') return { x: 990, y: 15, width: 150, z: 5 };
   if (id === 'one-word') return { x: 810, y: 280, width: 85, z: 10 };
-  if (id === 'ai-ticker') return { x: 520, y: 735, width: 102, z: 10 };
+  if (id === 'ai-ticker') return { x: 704, y: 20, width: 488, z: 10 };
   return { x: 40 + (index % 3) * 390, y: 600 + Math.floor(index / 3) * 320, width: 320, z: index + 4 };
 }

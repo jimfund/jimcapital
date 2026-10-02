@@ -18,22 +18,24 @@ export function btcQuoteText(quote, now = Date.now()) {
   return price.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
-export function startAiTicker(root) {
+export function startAiTicker(root, subscribe = subscribeQuotes) {
   const quotes = [...root.querySelectorAll('.ai-quote')];
-  const copy = root.querySelector('.ticker-copy').cloneNode(true);
-  copy.setAttribute('aria-hidden', 'true');
-  root.querySelector('.ticker-track').append(copy);
-  const duplicates = [...copy.querySelectorAll('.ai-quote')];
-  function display(quote, value, data) {
-    for (const item of [quote, duplicates[quotes.indexOf(quote)]]) {
-      item.querySelector('output').textContent = value;
-      quoteState(item, data);
-    }
-  }
-  subscribeQuotes(data => {
+  const status = root.querySelector('.airship-status');
+  return subscribe(data => {
     for (const quote of quotes) {
       const value = data[quote.dataset.market];
-      display(quote, value ? formatPrice(value.price, quote.dataset.market === 'BTC' ? 'USD' : 'billion_usd') : '—', value);
+      const text = value ? formatPrice(value.price, quote.dataset.market === 'BTC' ? 'USD' : 'billion_usd') : '—';
+      quote.querySelector('output').textContent = text;
+      quoteState(quote, value);
+      const name = { ANTHROPIC: 'Anthropic valuation', OPENAI: 'OpenAI valuation', BTC: 'Bitcoin price in US dollars' }[quote.dataset.market];
+      quote.setAttribute('aria-label', `${name}: ${text}${value?.stale ? ', saved price' : ''}. Open price history.`);
+    }
+    if (status) {
+      const values = quotes.map(q => data[q.dataset.market]);
+      status.textContent = values.every(v => v === undefined) ? 'CONNECTING'
+        : !values.some(Boolean) ? 'SIGNAL LOST'
+        : values.some(v => v?.stale) ? 'SAVED PRICES'
+        : values.some(v => !v) ? 'PARTIAL SIGNAL' : 'LIVE PRICES';
     }
   });
 }
