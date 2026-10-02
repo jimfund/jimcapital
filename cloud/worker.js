@@ -26,6 +26,13 @@ function result(row) {return {id:row.id,slug:row.slug,document:JSON.parse(row.dr
 async function handle(request,env,context) {
  const url=new URL(request.url),path=url.pathname;
  if(path.startsWith('/api/markets/'))return marketResponse(request,env.DB,context);
+ if((path==='/'||path==='/index.html')&&(request.method==='GET'||request.method==='HEAD')) {
+  const asset=new URL(request.url);asset.pathname='/site-home';
+  let response=await env.ASSETS.fetch(new Request(asset,request));
+  // The development server uses the unrenamed source entry point.
+  if(response.status===404)response=await env.ASSETS.fetch(request);
+  return request.method==='GET' ? withMarketSnapshot(response,env.DB) : response;
+ }
  if(path==='/api/transfers'&&request.method==='POST') {
   if(!env.PUBLISHING_SECRET||request.headers.get('Authorization')!==`Bearer ${env.PUBLISHING_SECRET}`)throw new HTTPError(403,'Not authorized.');
   const data=await body(request);
@@ -142,7 +149,6 @@ async function handle(request,env,context) {
   const row=await env.DB.prepare(`SELECT slug,published, ${publicationDate} AS first_published_at FROM articles WHERE slug=? AND published IS NOT NULL`).bind(slug).first();
   if(row)return html(renderArticle(JSON.parse(row.published),{slug:row.slug,publishedAt:row.first_published_at}));
  }
- const response=await env.ASSETS.fetch(request);
- return request.method==='GET'&&(path==='/'||path==='/index.html') ? withMarketSnapshot(response,env.DB) : response;
+ return env.ASSETS.fetch(request);
 }
 export default {async fetch(request,env,context) {try{return await handle(request,env,context);}catch(error){if(error instanceof HTTPError)return json({error:error.message},error.status);console.error('Article request failed',error);return json({error:'Could not complete that request. Your saved content is unchanged.'},503);}}};

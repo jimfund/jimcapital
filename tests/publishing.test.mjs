@@ -11,6 +11,20 @@ function database(){
  return {prepare(sql){const statement=sqlite.prepare(sql);let args=[];return {bind(...values){args=values;return this;},async first(){return statement.get(...args)||null;},async all(){return {results:statement.all(...args)};},async run(){const r=statement.run(...args);return {meta:{changes:Number(r.changes)}};}};},async batch(statements){sqlite.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());sqlite.exec('COMMIT');return results;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
 }
 const origin='https://jim.example';
+test('homepage routes use the separate template and include the D1 snapshot even with asset-first hosting',async()=>{
+ const requests=[];
+ const source=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const env={DB:database(),ASSETS:{fetch:async request=>{
+  requests.push(new URL(request.url).pathname);
+  return new URL(request.url).pathname==='/site-home' ? new Response(source,{headers:{'Content-Type':'text/html'}}) : new Response('Missing',{status:404});
+ }}};
+ for(const path of ['/','/index.html']){
+  const response=await worker.fetch(new Request(origin+path),env);
+  assert.equal(response.status,200);assert.equal(response.headers.get('Cache-Control'),'no-store');
+  assert.match(await response.text(),/id="market-snapshot" type="application\/json">\{"quotes":/);
+ }
+ assert.deepEqual(requests,['/site-home','/site-home']);
+});
 test('graphs is a public page, canonical URLs preserve selections, and asset redirects do not loop',async()=>{
  assert.equal(slugOK('graphs'),false);
  const env={DB:database(),ASSETS:{fetch:async request=>new URL(request.url).pathname==='/graphs.html'?new Response(null,{status:308,headers:{Location:origin+'/graphs'}}):new Response('Graphs page')}};

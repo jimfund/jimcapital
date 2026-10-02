@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "node scripts/stage-site.mjs && vite --host 127.0.0.1 --port 8001",
-    "build": "node scripts/stage-site.mjs && vite build",
+    "build": "node scripts/stage-site.mjs && vite build && node scripts/prepare-homepage.mjs",
     "test": "node --test tests/*.test.mjs",
     "db:generate": "drizzle-kit generate"
   },
