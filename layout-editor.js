@@ -111,6 +111,7 @@ export function startEditor() {
     restoredLayout.items.clock ||= structuredClone(layout.items.clock);
     restoredLayout.items['one-word'] ||= structuredClone(layout.items['one-word']);
     restoredLayout.items['ai-ticker'] ||= structuredClone(layout.items['ai-ticker']);
+    restoredLayout.items['uv-machine'] ||= structuredClone(layout.items['uv-machine']);
     applyLayout(restoredLayout);
     selected = items.has(saved.selected) ? saved.selected : 'monitor';
     mode = ['move', 'pen', 'eraser', 'number'].includes(saved.mode) ? saved.mode : 'move';

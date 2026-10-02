@@ -57,10 +57,10 @@ def valid_layout(data):
     if not isinstance(data, dict) or data.get("version") != 1:
         return False
     items = data.get("items")
-    if not isinstance(items, dict) or len(items) > 107:
+    if not isinstance(items, dict) or len(items) > 108:
         return False
     for key, item in items.items():
-        if key not in ("prediction", "angel", "monitor", "softbank", "clock", "one-word", "ai-ticker") and not DOODLE_ID.fullmatch(key):
+        if key not in ("prediction", "angel", "monitor", "softbank", "clock", "one-word", "ai-ticker", "uv-machine") and not DOODLE_ID.fullmatch(key):
             return False
         if not isinstance(item, dict):
             return False
@@ -94,6 +94,8 @@ def valid_scene(data):
         expected.add("one-word")
     if "ai-ticker" in data["layout"]["items"]:
         expected.add("ai-ticker")
+    if "uv-machine" in data["layout"]["items"]:
+        expected.add("uv-machine")
     return set(data["layout"]["items"]) == expected
 
 
