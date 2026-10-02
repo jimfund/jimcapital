@@ -86,15 +86,19 @@ test('fog cancellation during image decoding never allocates graphics or adds an
  controller.abort(); resolve(); assert.equal(await pending, undefined); assert.equal(root.querySelector('canvas'), null);
 });
 
-test('the wake texture uploads only when a cursor trail changes, then returns to idle', async t => {
+test('the flow texture uploads during wind motion and returns to neutral when settled', async t => {
  const { root, view, state } = setup(t), renderer = await createFogRenderer(root);
  t.after(() => renderer.destroy());
  renderer.surface.getBoundingClientRect = () => ({ left: 100, top: 50, width: 640, height: 382 });
  assert.equal(state.uniforms.u_wake, 2); renderer.render(.1); assert.equal(state.wakeUploads.length, 0);
- root.querySelector('.ai-quote').dispatchEvent(new view.MouseEvent('pointermove', { clientX: 420, clientY: 241, bubbles: true }));
- renderer.render(.2); assert.equal(state.wakeUploads.length, 1); assert.ok(state.wakeUploads[0].some(value => value > 0));
+ const neutral = data => data.every((value, i) => value === (i % 4 === 3 ? 255 : 128));
+ const link = root.querySelector('.ai-quote');
+ link.dispatchEvent(new view.MouseEvent('pointermove', { clientX: 260, clientY: 241, bubbles: true }));
+ renderer.render(.15); assert.equal(state.wakeUploads.length, 0);
+ link.dispatchEvent(new view.MouseEvent('pointermove', { clientX: 580, clientY: 241, bubbles: true }));
+ renderer.render(.2); assert.equal(state.wakeUploads.length, 1); assert.ok(!neutral(state.wakeUploads[0]));
  renderer.render(.3); assert.equal(state.wakeUploads.length, 2);
- renderer.render(10); assert.ok(state.wakeUploads.at(-1).every(value => value === 0));
+ renderer.render(10); assert.ok(neutral(state.wakeUploads.at(-1)));
  const uploads = state.wakeUploads.length; renderer.render(11); assert.equal(state.wakeUploads.length, uploads);
 });
 

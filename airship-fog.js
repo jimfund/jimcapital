@@ -1,6 +1,6 @@
 // Heterogeneous 3D fog, integrated in front of a depth approximation of the
 // photographed ship. The resulting transmittance also occludes the HTML screen.
-import { createFogWake } from './airship-fog-wake.js';
+import { createFogWake, WIND_LIMITS } from './airship-fog-wake.js';
 export const FOG_SETTINGS = Object.freeze({ density: 1, wind: .7, scatter: 2.5 });
 export const fogVertexShader = `
 attribute vec2 a_position;
@@ -58,17 +58,22 @@ void main() {
  float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
  float edge = smoothstep(0., .09, v_uv.x) * smoothstep(0., .09, 1. - v_uv.x)
             * smoothstep(0., .10, v_uv.y) * smoothstep(0., .10, 1. - v_uv.y);
- // Clear the actual volume and its scattered light along the cursor's trail.
- float presence = 1. - .995 * texture2D(u_wake, vec2(v_uv.x, 1. - v_uv.y)).r;
- float cameraDensity = edge * presence, skyDensity = .47 * presence;
+ // Transport the density field with the gust. A little compression gathers
+ // mist at its leading edge; the light still scatters through the moving fog.
+ vec3 flow = (texture2D(u_wake, vec2(v_uv.x, 1. - v_uv.y)).rgb * 255. - 128.) / 127.;
+ vec2 displacement = flow.rg * vec2(${WIND_LIMITS.x * 3.168}, ${-WIND_LIMITS.y * 2.1});
+ float compression = 1. + flow.b * ${WIND_LIMITS.density};
+ float cameraDensity = edge * compression, skyDensity = .47 * compression;
  vec3 point = vec3((p.x - .5) * 2.4, (.5 - p.y) * 1.5, -1.48 + jitter * stepSize);
  vec3 radiance = vec3(0.);
  float transmission = 1.;
  for (int sampleIndex = 0; sampleIndex < 16; sampleIndex++) {
-  float rho = densityAt(point) * cameraDensity;
+  // Different depths move by different amounts, giving the wake volume.
+  vec3 carriedPoint = point - vec3(displacement * (.85 - .18 * point.z), 0.);
+  float rho = densityAt(carriedPoint) * cameraDensity;
   float attenuation = exp(-rho * stepSize * 1.8);
   // A short sample toward the sky adds soft self-shadowing to the billows.
-  float sky = exp(-densityAt(point + vec3(-.17, .30, .16)) * skyDensity);
+  float sky = exp(-densityAt(carriedPoint + vec3(-.17, .30, .16)) * skyDensity);
   vec3 daylight = mix(vec3(.72, .79, .87), vec3(.98, .99, 1.), sky);
   vec3 nightlight = mix(vec3(.075, .11, .16), vec3(.25, .31, .39), sky);
   vec3 incoming = mix(daylight, nightlight, u_night);
@@ -157,7 +162,7 @@ export async function createFogRenderer(root, { signal } = {}) {
   if (!dirty && drawnTime === elapsed) return;
   if (wake.update(elapsed)) {
    gl.activeTexture(gl.TEXTURE0 + 2); gl.bindTexture(gl.TEXTURE_2D, textures[2]);
-   gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, wake.width, wake.height, gl.LUMINANCE, gl.UNSIGNED_BYTE, wake.data);
+   gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, wake.width, wake.height, gl.RGBA, gl.UNSIGNED_BYTE, wake.data);
   }
   gl.uniform1f(uniforms.time, elapsed * FOG_SETTINGS.wind);
   fogLightUniforms(elapsed, lights); gl.uniform4fv(uniforms['lights[0]'], lights.positions);
@@ -183,7 +188,7 @@ export async function createFogRenderer(root, { signal } = {}) {
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
    if (index === 2) {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,wake.width,wake.height,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,wake.data);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,wake.width,wake.height,0,gl.RGBA,gl.UNSIGNED_BYTE,wake.data);
    }
    else if (index === 1) { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,artwork); }
    else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,256,0,gl.RGBA,gl.UNSIGNED_BYTE,makeNoiseTexture());
