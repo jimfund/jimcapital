@@ -1,13 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
-import { softbankGeometry, nearestPoint, mountSoftbankChart } from '../softbank-chart.js';
+import { softbankGeometry, nearestPoint, mountSoftbankChart, timeAgo } from '../softbank-chart.js';
 import { historyUrl } from '../history-navigation.js';
 
 const DAY = 86400000, STEP = 300000, NOW = Date.parse('2026-10-02T00:00:00Z');
 const sample = { symbol: 'SOFTBANK', to: NOW, step: STEP, stale: false, points: Array.from({ length: 289 }, (_, i) => ({ time: NOW - DAY + i * STEP, price: 6000 + i })) };
 const settle = () => new Promise(resolve => setImmediate(resolve));
 function setup(t, fetcher = async () => Response.json(sample)) {
+ t.mock.method(Date, 'now', () => NOW);
  const dom = new JSDOM('<section class="softbank-tracker"><output id="softbank-price">—</output></section>', { url: 'https://example.com/', pretendToBeVisual: true });
  const doc = dom.window.document, root = doc.querySelector('section');
  let listener;
@@ -37,10 +38,14 @@ test('moving along the scaled TV shows the corresponding historical value and ti
  svg.dispatchEvent(new dom.window.MouseEvent('pointermove', { clientX: 172.5 }));
  assert.equal(price(), '6,144.00');
  assert.equal(root.querySelector('time').dateTime, new Date(NOW - DAY / 2).toISOString());
+ assert.equal(root.querySelector('time').textContent, '12 hours ago');
+ assert.equal(timeAgo(NOW - 300000, NOW), '5 mins ago');
+ assert.equal(timeAgo(NOW - 60000, NOW), '1 min ago');
+ assert.equal(timeAgo(NOW, NOW), 'just now');
  assert.match(svg.getAttribute('aria-valuetext'), /6,144.00/);
  quote({ SOFTBANK: { price: 6400, stale: false } }); assert.equal(price(), '6,144.00');
  svg.dispatchEvent(new dom.window.MouseEvent('pointerleave'));
- assert.equal(price(), '6,400.00'); assert.match(root.querySelector('time').textContent, /24h/);
+ assert.equal(price(), '6,400.00'); assert.equal(root.querySelector('time').textContent, '');
 });
 test('keyboard and touch inspection reach both ends; refresh preserves the inspected timestamp', async t => {
  const { dom, root, svg, chart, price } = setup(t); await settle();

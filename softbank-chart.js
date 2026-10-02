@@ -2,7 +2,15 @@ import { subscribeQuotes, formatPrice } from './market-data.js';
 
 const DAY = 86400000, NS = 'http://www.w3.org/2000/svg';
 const chartLabel = 'SoftBank 9984, past 24 hours. Move across the graph or use arrow keys to inspect prices in yen.';
-const localTime = time => new Date(time).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+export function timeAgo(time, now = Date.now()) {
+ const minutes = Math.max(0, Math.floor((now - time) / 60000));
+ if (minutes < 1) return 'just now';
+ if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+ const hours = Math.floor(minutes / 60);
+ if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+ const days = Math.floor(hours / 24);
+ return `${days} day${days === 1 ? '' : 's'} ago`;
+}
 export function softbankGeometry(history) {
  const from = history.to - DAY;
  const points = history.points.filter(p => p.time >= from && p.time <= history.to && Number.isFinite(p.price));
@@ -51,7 +59,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
   $('.softbank-cursor').setAttribute('hidden', ''); $('.softbank-point').setAttribute('hidden', '');
   output.textContent = formatPrice(quote?.price ?? geometry?.points.at(-1)?.price, 'points');
   output.dataset.state = quote ? (quote.stale ? 'stale' : 'live') : data?.stale ? 'stale' : 'live';
-  time.textContent = `${data?.stale || quote?.stale ? 'saved · ' : ''}24h${geometry?.change != null ? ` ${geometry.change >= 0 ? '+' : ''}${geometry.change.toFixed(2)}%` : ''}`;
+  time.textContent = data?.stale || quote?.stale ? 'saved' : '';
   time.removeAttribute('datetime'); time.removeAttribute('title');
  }
  function inspect(next) {
@@ -59,7 +67,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
   index = Math.max(0, Math.min(geometry.points.length - 1, next));
   const p = geometry.points[index]; selectedTime = p.time;
   output.textContent = formatPrice(p.price, 'points'); output.dataset.state = data.stale ? 'stale' : 'live';
-  time.textContent = `${data.stale ? 'saved · ' : ''}${localTime(p.time)}`;
+  time.textContent = timeAgo(p.time);
   time.dateTime = new Date(p.time).toISOString(); time.title = new Date(p.time).toLocaleString();
   const x = geometry.x(p.time), y = geometry.y(p.price);
   const cursor = $('.softbank-cursor'), point = $('.softbank-point');
