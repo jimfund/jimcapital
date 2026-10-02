@@ -11,7 +11,7 @@ function setup(t, { compile = true, smallArtwork = false } = {}) {
  const view = dom.window, root = view.document.querySelector('.market-airship'), artwork = root.querySelector('img');
  artwork.decode = async () => {};
  Object.defineProperties(artwork, { naturalWidth: { value: smallArtwork ? 2 : 1672 }, naturalHeight: { value: smallArtwork ? 2 : 941 } });
- Object.defineProperty(root, 'clientWidth', { value: 1120 });
+ Object.defineProperty(root, 'clientWidth', { value: 1120, configurable: true });
  const state = { uniforms: {}, draws: 0, deleted: [], observers: [], frames: new Map() };
  let frameId = 0;
  view.requestAnimationFrame = fn => { state.frames.set(++frameId, fn); return frameId; };
@@ -53,8 +53,28 @@ test('homepage fog uses the approved density and scattering, with slower wind an
  assert.deepEqual(state.uniforms['u_lights[0]'], Array.from(fogLightUniforms(10).positions));
  const frozen = { ...state.uniforms }; renderer.render(10); assert.deepEqual(state.uniforms, frozen);
  const canvas = root.querySelector('.airship-fog');
- assert.equal(canvas.width, 860); assert.equal(canvas.height, 513); assert.equal(canvas.getAttribute('aria-hidden'), 'true');
+ assert.equal(canvas.width, 640); assert.equal(canvas.height, 382); assert.equal(canvas.getAttribute('aria-hidden'), 'true');
  assert.equal(root.querySelector('.airship-display').outerHTML, display);
+});
+
+test('fog reuses lamp buffers while keeping changing intensities and fixed lamp geometry', () => {
+ const lights = fogLightUniforms(0), positions = lights.positions, colours = lights.colours;
+ const initial = Array.from(positions), result = fogLightUniforms(3, lights);
+ assert.equal(result, lights); assert.equal(result.positions, positions); assert.equal(result.colours, colours);
+ assert.deepEqual(result, fogLightUniforms(3)); assert.notDeepEqual(Array.from(positions), initial);
+ for (let i = 0; i < positions.length; i++) if (i % 4 !== 3) assert.equal(positions[i], initial[i]);
+});
+
+test('repeated frames and unchanged resize notifications do not redraw or reset the fog', async t => {
+ const { root, state } = setup(t), renderer = await createFogRenderer(root);
+ t.after(() => renderer.destroy());
+ const initial = state.draws;
+ renderer.render(0); state.observers[0].callback(); assert.equal(state.draws, initial);
+ renderer.render(1); assert.equal(state.draws, initial + 1);
+ renderer.render(1); state.observers[0].callback(); assert.equal(state.draws, initial + 1);
+ Object.defineProperty(root, 'clientWidth', { value: 680 }); state.observers[0].callback();
+ assert.equal(root.querySelector('.airship-fog').width, 408); assert.equal(state.draws, initial + 2);
+ assert.equal(state.uniforms.u_time, .7);
 });
 
 test('fog cancellation during image decoding never allocates graphics or adds an overlay', async t => {
@@ -103,4 +123,28 @@ test('a late fog initialization is discarded when the marquee has already stoppe
  const renderer = await createMarqueeRenderer(root, { startFog: () => new Promise(resolve => { finish = resolve; }) });
  renderer.destroy(); finish({ render: () => { throw new Error('Must not render'); }, destroy: () => destroyed++ });
  await Promise.resolve(); assert.equal(destroyed, 1); assert.equal(root.querySelector('canvas'), null);
+});
+
+test('moving the ship offscreen pauses both renderers and returning resumes without a time jump', async t => {
+ const { root, view, state, step } = setup(t, { smallArtwork: true });
+ let notify, observed, disconnected = false;
+ view.IntersectionObserver = class {
+  constructor(callback) { notify = callback; }
+  observe(element) { observed = element; }
+  unobserve() {}
+  disconnect() { disconnected = true; }
+ };
+ const fogSurface = view.document.createElement('canvas');
+ const times = [], renderer = await createMarqueeRenderer(root, { startFog: async () => ({ surface: fogSurface, render: time => times.push(time), destroy() {} }) });
+ t.after(() => renderer.destroy());
+ assert.equal(observed, fogSurface); step(100); step(200);
+ const draws = state.draws, updates = times.length;
+ notify([{ target: root, isIntersecting: false }]); assert.equal(state.frames.size, 1);
+ notify([{ target: fogSurface, isIntersecting: false }]); step(10200);
+ assert.equal(state.draws, draws); assert.equal(times.length, updates); assert.equal(state.frames.size, 0);
+ assert.ok(root.querySelector('.airship-lights'));
+ view.document.dispatchEvent(new view.Event('visibilitychange')); assert.equal(state.frames.size, 0);
+ notify([{ target: fogSurface, isIntersecting: true }]); step(10300); assert.equal(times.at(-1), .1);
+ step(10400); assert.equal(times.at(-1), .2);
+ renderer.destroy(); assert.equal(disconnected, true); assert.equal(state.frames.size, 0);
 });

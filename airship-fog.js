@@ -52,14 +52,14 @@ void main() {
  float within = step(0., p.x) * step(p.x, 1.) * step(0., p.y) * step(p.y, 1.);
  float ship = texture2D(u_ship, vec2(clamp(p.x, 0., 1.), 1. - clamp(p.y, 0., 1.))).a * within;
  float end = mix(1.30, shipDepth(p), ship);
- float stepSize = (end + 1.48) / 24.;
+ float stepSize = (end + 1.48) / 16.;
  float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
  float edge = smoothstep(0., .09, v_uv.x) * smoothstep(0., .09, 1. - v_uv.x)
             * smoothstep(0., .10, v_uv.y) * smoothstep(0., .10, 1. - v_uv.y);
  vec3 point = vec3((p.x - .5) * 2.4, (.5 - p.y) * 1.5, -1.48 + jitter * stepSize);
  vec3 radiance = vec3(0.);
  float transmission = 1.;
- for (int sampleIndex = 0; sampleIndex < 24; sampleIndex++) {
+ for (int sampleIndex = 0; sampleIndex < 16; sampleIndex++) {
   float rho = densityAt(point) * edge;
   float attenuation = exp(-rho * stepSize * 1.8);
   // A short sample toward the sky adds soft self-shadowing to the billows.
@@ -114,14 +114,19 @@ const lamps = [
  [.895,.815,-.23,.31,3,[1,.38,.085]], [.812,.525,-.19,.52,4,[.22,.72,1]],
  [.51,.847,.02,.26,2,[1,.76,.42]],
 ];
-export function fogLightUniforms(time = 0) {
- const positions = new Float32Array(36), colours = new Float32Array(27);
- lamps.forEach(([x,y,z,energy,group,colour], index) => {
+export function fogLightUniforms(time = 0, buffers) {
+ const result = buffers || { positions: new Float32Array(36), colours: new Float32Array(27) };
+ const { positions, colours } = result;
+ for (let index = 0; index < lamps.length; index++) {
+  const [x,y,z,energy,group,colour] = lamps[index];
+  if (!buffers) {
+   positions.set([(x - .5) * 2.4, (.5 - y) * 1.5, z], index * 4);
+   colours.set(colour, index * 3);
+  }
   const strength = group === 4 ? 1 : marqueePower(x,y,group,time);
-  positions.set([(x - .5) * 2.4, (.5 - y) * 1.5, z, energy * Math.max(.08, strength)], index * 4);
-  colours.set(colour, index * 3);
- });
- return { positions, colours };
+  positions[index * 4 + 3] = energy * Math.max(.08, strength);
+ }
+ return result;
 }
 export async function createFogRenderer(root, { signal } = {}) {
  const doc = root.ownerDocument, view = doc.defaultView;
@@ -130,8 +135,8 @@ export async function createFogRenderer(root, { signal } = {}) {
  const surface = doc.createElement('canvas'); surface.className = 'airship-fog'; surface.setAttribute('aria-hidden', 'true');
  const gl = surface.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: false, depth: false });
  if (!gl) return;
- const shaders = [], textures = [];
- let program, buffer, observer, uniforms, elapsed = 0, disposed = false;
+ const shaders = [], textures = [], lights = fogLightUniforms();
+ let program, buffer, observer, uniforms, elapsed = 0, disposed = false, dirty = true, drawnTime;
  function destroy() {
   if (disposed) return;
   disposed = true; observer?.disconnect(); signal?.removeEventListener('abort', destroy); surface.remove();
@@ -144,9 +149,11 @@ export async function createFogRenderer(root, { signal } = {}) {
  function render(time = elapsed) {
   if (disposed) return;
   elapsed = time;
+  if (!dirty && drawnTime === elapsed) return;
   gl.uniform1f(uniforms.time, elapsed * FOG_SETTINGS.wind);
-  const lights = fogLightUniforms(elapsed); gl.uniform4fv(uniforms['lights[0]'],lights.positions); gl.uniform3fv(uniforms['colours[0]'],lights.colours);
+  fogLightUniforms(elapsed, lights); gl.uniform4fv(uniforms['lights[0]'], lights.positions);
   gl.drawArrays(gl.TRIANGLES,0,6);
+  drawnTime = elapsed; dirty = false;
  }
  try {
   const compile = (type, source) => {
@@ -170,10 +177,15 @@ export async function createFogRenderer(root, { signal } = {}) {
   }
   uniforms = Object.fromEntries(['time','density','scatter','night','lights[0]','colours[0]'].map(name=>[name,gl.getUniformLocation(program,'u_' + name)]));
   gl.uniform1f(uniforms.density, FOG_SETTINGS.density); gl.uniform1f(uniforms.scatter, FOG_SETTINGS.scatter); gl.uniform1f(uniforms.night, 0);
+  gl.uniform3fv(uniforms['colours[0]'], lights.colours);
   const resize = () => {
    if (disposed) return;
-   surface.width = Math.max(1,Math.min(860,Math.round(root.clientWidth * .9)));
-   surface.height = Math.max(1,Math.round(surface.width * artwork.naturalHeight / artwork.naturalWidth * 1.4 / 1.32));
+   // Diffuse fog needs fewer pixels than the artwork beneath it. Keep the
+   // 30fps movement, with a smaller surface and 16 samples through its volume.
+   const width = Math.max(1, Math.min(640, Math.round(root.clientWidth * .6)));
+   const height = Math.max(1, Math.round(width * artwork.naturalHeight / artwork.naturalWidth * 1.4 / 1.32));
+   if (surface.width === width && surface.height === height) return;
+   surface.width = width; surface.height = height; dirty = true;
    gl.viewport(0,0,surface.width,surface.height); render();
   };
   surface.addEventListener('webglcontextlost',event=>{event.preventDefault();destroy();});
@@ -182,5 +194,5 @@ export async function createFogRenderer(root, { signal } = {}) {
  } catch (error) {
   destroy(); throw error;
  }
- return { render, destroy };
+ return { render, destroy, surface };
 }

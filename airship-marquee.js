@@ -76,10 +76,10 @@ export async function createMarqueeRenderer(root, { signal, startFog = createFog
  const gl = surface.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: false, depth: false });
  if (!gl) return;
  const shaders = [], textures = [];
- let program, buffer, observer, frame, fog, disposed = false, elapsed = 0, last = 0, lastDraw = 0;
+ let program, buffer, observer, visibilityObserver, frame, fog, visibilityTarget = root, disposed = false, inView = true, elapsed = 0, last = 0, lastDraw = 0;
  function destroy() {
   if (disposed) return;
-  disposed = true; view.cancelAnimationFrame(frame); observer?.disconnect(); fog?.destroy();
+  disposed = true; view.cancelAnimationFrame(frame); observer?.disconnect(); visibilityObserver?.disconnect(); fog?.destroy();
   doc.removeEventListener('visibilitychange', restart); signal?.removeEventListener('abort', destroy);
   surface.remove(); root.removeAttribute('data-marquee');
   for (const texture of textures) gl.deleteTexture(texture);
@@ -87,11 +87,11 @@ export async function createMarqueeRenderer(root, { signal, startFog = createFog
   if (buffer) gl.deleteBuffer(buffer);
   if (program) gl.deleteProgram(program);
  }
- function restart() { view.cancelAnimationFrame(frame); last = 0; if (!doc.hidden && !disposed) frame = view.requestAnimationFrame(tick); }
+ function restart() { view.cancelAnimationFrame(frame); last = 0; if (inView && !doc.hidden && !disposed) frame = view.requestAnimationFrame(tick); }
  let time;
  function render() { if (!disposed) { gl.uniform1f(time, elapsed); gl.drawArrays(gl.TRIANGLES, 0, 6); fog?.render(elapsed); } }
  function tick(now) {
-  if (disposed || doc.hidden) return;
+  if (disposed || doc.hidden || !inView) return;
   elapsed += last ? Math.min((now - last) / 1000, .1) : 0; last = now;
   if (now - lastDraw >= 1000 / 30) { render(); lastDraw = now; }
   frame = view.requestAnimationFrame(tick);
@@ -127,11 +127,25 @@ export async function createMarqueeRenderer(root, { signal, startFog = createFog
   surface.addEventListener('webglcontextlost', event => { event.preventDefault(); destroy(); });
   root.insertBefore(surface, root.querySelector('.airship-display'));
   observer = new view.ResizeObserver(resize); observer.observe(root); resize();
+  if (view.IntersectionObserver) {
+   visibilityObserver = new view.IntersectionObserver(entries => {
+    const entry = entries[entries.length - 1];
+    if (!entry || entry.target !== visibilityTarget || entry.isIntersecting === inView) return;
+    inView = entry.isIntersecting; restart();
+   }, { rootMargin: '200px' }); // Include the fog extending beyond the hull.
+   visibilityObserver.observe(root);
+  }
   root.dataset.marquee = 'ready';
   doc.addEventListener('visibilitychange', restart); signal?.addEventListener('abort', destroy, { once: true }); restart();
   startFog(root, { signal }).then(renderer => {
    if (disposed) renderer?.destroy();
-   else { fog = renderer; fog?.render(elapsed); }
+   else {
+    fog = renderer;
+    if (fog?.surface && visibilityObserver) {
+     visibilityObserver.unobserve(visibilityTarget); visibilityTarget = fog.surface; visibilityObserver.observe(visibilityTarget);
+    }
+    fog?.render(elapsed);
+   }
   }).catch(() => {}); // Unsupported fog leaves the marquee and live prices usable.
  } catch (error) { destroy(); throw error; }
  return { destroy };
