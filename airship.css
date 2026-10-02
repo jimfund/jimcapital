@@ -24,3 +24,19 @@
 .airship-status { padding-top: 10px; color: #b1cabc; text-align: center; font-size: 15px; letter-spacing: 3px; }
 .editing .market-airship { pointer-events: auto; }
 .editing .airship-display { pointer-events: none; }
+
+/* Keep the artwork, then give the same live links a readable touch layout. */
+.mobile-layout .market-airship { aspect-ratio: auto; }
+.mobile-layout .airship-display {
+ position: relative; inset: auto; width: 100%; height: auto; transform: none !important;
+ visibility: visible; padding: 14px 18px 12px; margin-top: 4px;
+ grid-template-rows: auto repeat(3, minmax(48px, auto)) auto;
+ border: 1px solid #398e9c66; border-radius: 8px; background: #0b202b;
+}
+.mobile-layout .airship-heading { padding-bottom: 10px; font-size: 13px; letter-spacing: 2px; }
+.mobile-layout .market-airship .ai-quote { flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.mobile-layout .airship-label { flex-direction: column; gap: 4px; }
+.mobile-layout .market-airship .ai-symbol { font-size: 18px; letter-spacing: 1px; }
+.mobile-layout .airship-unit { font-size: 10px; letter-spacing: .5px; }
+.mobile-layout .market-airship .ai-quote output { font-size: clamp(19px, 5.5vw, 26px); letter-spacing: -.5px; }
+.mobile-layout .airship-status { padding-top: 10px; font-size: 10px; letter-spacing: 1.5px; }

@@ -1,4 +1,5 @@
 import { fitScene } from './layout-model.js';
+import { MOBILE_QUERY, mobileLayout, measureDrawingInk } from './mobile-layout.js';
 
 const CONTROLS = 'a, button, input, select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [role="link"], [role="button"], [tabindex]:not([tabindex="-1"])';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -6,7 +7,7 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 export function canvasGeometry(rects, width, height) {
   if (!rects.length) return { scale: 1, x: width / 2, y: height / 2 };
   const fit = fitScene(rects, width, height, 32);
-  // On phones, leave room to explore instead of shrinking every object to a speck.
+  // Keep objects readable when a short desktop viewport cannot fit the scene.
   const scale = clamp(fit.scale, .55, 1);
   const left = Math.min(...rects.map(rect => rect.x));
   const top = Math.min(...rects.map(rect => rect.y));
@@ -20,13 +21,14 @@ export function mountCanvasView(main, items, getLayout) {
   const doc = main.ownerDocument;
   const win = doc.defaultView;
   const preference = win.matchMedia('(prefers-reduced-motion: reduce)');
+  const mobilePreference = win.matchMedia(MOBILE_QUERY);
   const camera = { x: 0, y: 0 };
   const target = { x: 0, y: 0 };
   const angel = items.get('angel');
   const angelWindow = angel?.element.querySelector('.angel-window');
   const angelImage = angelWindow?.querySelector('img');
   let imageScale = 1, imageTravel = { x: 0, y: 0 };
-  let geometry, layers = [], bounds, frame = 0, lastTime = 0, drag;
+  let geometry, layers = [], bounds, frame = 0, lastTime = 0, drag, mobile = false;
 
   doc.body.classList.add('canvas-mode');
   main.classList.add('canvas-viewport');
@@ -71,6 +73,39 @@ export function mountCanvasView(main, items, getLayout) {
 
   function resize() {
     const layout = getLayout();
+    const nextMobile = mobilePreference.matches;
+    if (mobile !== nextMobile) {
+      finishDrag({});
+      if (frame) win.cancelAnimationFrame(frame);
+      frame = 0; lastTime = 0;
+      camera.x = target.x = camera.y = target.y = 0;
+    }
+    mobile = nextMobile;
+    doc.body.classList.toggle('canvas-mode', !mobile);
+    doc.body.classList.toggle('mobile-mode', mobile);
+    main.classList.toggle('canvas-viewport', !mobile);
+    main.classList.toggle('mobile-layout', mobile);
+    if (mobile) {
+      main.removeAttribute('tabindex');
+      main.removeAttribute('aria-keyshortcuts');
+      main.setAttribute('aria-label', 'jim.capital');
+      const scene = mobileLayout([...items].map(([id, item]) => ({
+        ...layout.items[id], id, nativeWidth: id === 'ai-ticker' ? main.clientWidth : item.nativeWidth,
+        nativeHeight: item.element.offsetHeight, drawing: item.drawing, ink: measureDrawingInk(item),
+      })), main.clientWidth);
+      for (const position of scene.items) {
+        const item = items.get(position.id);
+        item.element.style.transform = `translate3d(${position.x}px, ${position.y}px, 0) scale(${position.scale})`;
+        item.element.style.zIndex = layout.items[position.id].z;
+      }
+      main.style.height = `${scene.height}px`;
+      if (angelImage) angelImage.style.removeProperty('transform');
+      return 1;
+    }
+    main.style.removeProperty('height');
+    main.tabIndex = 0;
+    main.setAttribute('aria-label', 'Explore the jim.capital canvas');
+    main.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown ArrowLeft ArrowRight Home');
     layers = [...items].map(([id, item]) => {
       const position = layout.items[id];
       const zoom = position.width / item.nativeWidth;
@@ -105,7 +140,7 @@ export function mountCanvasView(main, items, getLayout) {
   }
 
   main.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || event.isPrimary === false || drag || isControl(event.target)) return;
+    if (mobile || event.button !== 0 || event.isPrimary === false || drag || isControl(event.target)) return;
     event.preventDefault();
     main.focus({ preventScroll: true });
     Object.assign(target, camera);
@@ -126,10 +161,10 @@ export function mountCanvasView(main, items, getLayout) {
   }
   for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) main.addEventListener(type, finishDrag);
   win.addEventListener('blur', finishDrag);
-  main.addEventListener('dragstart', event => { if (!isControl(event.target)) event.preventDefault(); });
+  main.addEventListener('dragstart', event => { if (!mobile && !isControl(event.target)) event.preventDefault(); });
 
   main.addEventListener('wheel', event => {
-    if (event.ctrlKey || event.metaKey) return;
+    if (mobile || event.ctrlKey || event.metaKey) return;
     event.preventDefault();
     if (drag) return;
     let x = event.deltaX, y = event.deltaY;
@@ -141,7 +176,7 @@ export function mountCanvasView(main, items, getLayout) {
 
   const reset = () => { finishDrag({}); moveTo(0, 0); };
   main.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || isControl(event.target)) return;
+    if (mobile || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || isControl(event.target)) return;
     const step = event.shiftKey ? 160 : 64;
     const keys = { ArrowLeft: [step, 0], ArrowRight: [-step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
     if (event.key === 'Home') { event.preventDefault(); reset(); }
@@ -153,6 +188,7 @@ export function mountCanvasView(main, items, getLayout) {
   });
 
   main.addEventListener('focusin', event => {
+    if (mobile) return;
     const item = event.target.closest('.site-item');
     if (!item) return;
     const rect = event.target.getBoundingClientRect();
@@ -168,6 +204,7 @@ export function mountCanvasView(main, items, getLayout) {
     if (x || y) moveTo(camera.x + x, camera.y + y);
   });
   preference.addEventListener('change', () => { Object.assign(camera, target); resize(); });
+  mobilePreference.addEventListener('change', resize);
   resize();
   return { resize };
 }

@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { canvasGeometry, mountCanvasView } from '../canvas-view.js';
 
-function fixture(t, reduced = false) {
+function fixture(t, reduced = false, initialSize = {}) {
   const dom = new JSDOM('<main></main>', { pretendToBeVisual: true });
   t.after(() => dom.window.close());
   const { document: doc } = dom.window;
   const main = doc.querySelector('main');
-  const size = { width: 1200, height: 850 };
+  const size = { width: 1200, height: 850, ...initialSize };
   Object.defineProperties(main, {
     clientWidth: { get: () => size.width }, clientHeight: { get: () => size.height },
   });
@@ -19,14 +19,16 @@ function fixture(t, reduced = false) {
   main.releasePointerCapture = () => { captured = undefined; };
   let changePreference;
   const preference = { matches: reduced, addEventListener: (_, callback) => { changePreference = callback; } };
-  dom.window.matchMedia = () => preference;
+  dom.window.matchMedia = query => query.includes('prefers-reduced-motion') ? preference
+    : { get matches() { return size.width <= 700; }, addEventListener() {} };
   let queue = [], time = 1, calls = 0;
-  dom.window.requestAnimationFrame = callback => { queue.push(callback); return ++calls; };
+  dom.window.requestAnimationFrame = callback => { const id = ++calls; queue.push({ id, callback }); return id; };
+  dom.window.cancelAnimationFrame = id => { queue = queue.filter(frame => frame.id !== id); };
   function flush() {
     for (let count = 0; queue.length; count++) {
       assert.ok(count < 150, 'the canvas must stop requesting frames once motion settles');
       const pending = queue; queue = []; time += 16;
-      pending.forEach(callback => callback(time));
+      pending.forEach(({ callback }) => callback(time));
     }
   }
   const items = new Map();
@@ -81,15 +83,13 @@ function fixture(t, reduced = false) {
   };
 }
 
-test('desktop starts with the scene in view, while phone objects stay large enough to explore', () => {
+test('desktop starts with the scene in view and retains its minimum canvas scale', () => {
   const rects = [{ x: 58, y: 6, width: 1134, height: 750 }];
   const desktop = canvasGeometry(rects, 1440, 1000);
   assert.equal(desktop.scale, 1);
   assert.ok(desktop.x + 58 > 0);
   assert.ok(desktop.x + 1192 < 1440);
-  const phone = canvasGeometry(rects, 390, 844);
-  assert.equal(phone.scale, .55);
-  assert.ok(rects[0].width * phone.scale > 390, 'the phone view can pan across the wider scene');
+  assert.equal(canvasGeometry(rects, 800, 400).scale, .55);
   assert.ok(Number.isFinite(canvasGeometry([], 0, 0).scale));
 });
 
@@ -173,7 +173,7 @@ test('reduced motion disables movement inside the frame without changing the for
 test('image parallax stays within the frame at either pan limit and after resizing', t => {
   const f = fixture(t);
   const viewport = f.main.querySelector('.angel-window');
-  for (const width of [1200, 390]) {
+  for (const width of [1200, 900]) {
     f.size.width = width; f.controller.resize();
     for (const direction of [-1, 1]) {
       f.wheel({ deltaX: direction * 1e6, deltaY: direction * 1e6 });
@@ -200,12 +200,50 @@ test('canceled drags release capture and secondary touch pointers do not move th
 
 test('tabbing to an offscreen control brings it back into view, including after resize', t => {
   const f = fixture(t);
-  f.size.width = 390; f.size.height = 700; f.controller.resize();
+  f.size.width = 900; f.size.height = 700; f.controller.resize();
   const link = f.main.querySelector('a');
   const start = f.position('ai-ticker');
-  link.getBoundingClientRect = () => ({ left: 500, right: 560, top: 100, bottom: 130 });
+  link.getBoundingClientRect = () => ({ left: 1010, right: 1070, top: 100, bottom: 130 });
   link.focus(); f.flush();
   assert.ok(Math.abs(f.position('ai-ticker')[0] - start[0] + 194) < .001);
   assert.equal(f.main.scrollLeft, 0);
   assert.equal(f.main.scrollTop, 0);
+});
+
+test('phones use native scrolling, focus and touch gestures with all original controls', t => {
+  const f = fixture(t, false, { width: 390, height: 844 });
+  assert.ok(f.doc.body.classList.contains('mobile-mode'));
+  assert.ok(!f.doc.body.classList.contains('canvas-mode'));
+  assert.ok(!f.main.hasAttribute('tabindex'));
+  assert.ok(parseFloat(f.main.style.height) > f.size.height);
+  const start = f.position('angel');
+  assert.equal(f.pointer('pointerdown', 50, 50, f.main, { type: 'touch' }).defaultPrevented, false);
+  f.pointer('pointermove', 50, 150); f.flush();
+  assert.equal(f.wheel({ deltaY: 100 }).defaultPrevented, false);
+  assert.equal(f.key('ArrowDown').defaultPrevented, false);
+  assert.deepEqual(f.position('angel'), start);
+  assert.equal(f.main.querySelector('.angel-window img').style.transform, '');
+  const link = f.main.querySelector('a');
+  f.main.scrollTop = 300;
+  link.focus(); f.flush();
+  assert.equal(f.main.scrollTop, 300, 'focus must not reset native scrolling');
+  assert.equal(f.pointer('pointerdown', 50, 50, link, { type: 'touch' }).defaultPrevented, false);
+  assert.equal(f.main.querySelectorAll('a, button, [role="link"], svg').length, 5);
+});
+
+test('crossing the phone breakpoint cancels a drag and restores the desktop composition', t => {
+  const f = fixture(t);
+  const initial = new Map([...f.items.keys()].map(id => [id, f.position(id)]));
+  f.pointer('pointerdown', 10, 10);
+  f.pointer('pointermove', 150, 120);
+  f.size.width = 390; f.controller.resize(); f.flush();
+  assert.equal(f.main.hasPointerCapture(1), false);
+  assert.equal(f.main.classList.contains('is-panning'), false);
+  assert.ok(f.doc.body.classList.contains('mobile-mode'));
+  f.size.width = 1200; f.controller.resize(); f.flush();
+  assert.ok(f.doc.body.classList.contains('canvas-mode'));
+  assert.equal(f.main.style.height, '');
+  assert.equal(f.main.tabIndex, 0);
+  for (const [id, position] of initial) assert.deepEqual(f.position(id), position);
+  assert.equal(f.wheel({ deltaY: 100 }).defaultPrevented, true);
 });

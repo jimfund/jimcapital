@@ -1,6 +1,7 @@
 // The selected local Marquee study, at its original pace and intensity.
 // Decorative light pixels animate independently of the live HTML prices.
 import { createFogRenderer } from './airship-fog.js';
+import { MOBILE_QUERY } from './mobile-layout.js';
 export const vertexShader = `
 attribute vec2 a_position;
 varying vec2 v_uv;
@@ -135,17 +136,17 @@ export async function createMarqueeRenderer(root, { signal, startFog = createFog
  } catch (error) { destroy(); throw error; }
  return { destroy };
 }
-export function mountAirshipMarquee(root, { media = root.ownerDocument.defaultView.matchMedia('(prefers-reduced-motion: reduce)'), start = createMarqueeRenderer } = {}) {
+export function mountAirshipMarquee(root, { media = root.ownerDocument.defaultView.matchMedia('(prefers-reduced-motion: reduce)'), compact = root.ownerDocument.defaultView.matchMedia?.(MOBILE_QUERY), start = createMarqueeRenderer } = {}) {
  let controller;
  const update = () => {
   controller?.abort(); controller = undefined;
-  if (media.matches) return;
+  if (media.matches || compact?.matches) return;
   controller = new AbortController();
   // Graphics failures leave the original artwork and live links in place.
   start(root, { signal: controller.signal }).catch(() => {});
  };
- media.addEventListener('change', update); update();
- return () => { controller?.abort(); media.removeEventListener('change', update); };
+ media.addEventListener('change', update); compact?.addEventListener('change', update); update();
+ return () => { controller?.abort(); media.removeEventListener('change', update); compact?.removeEventListener('change', update); };
 }
 if (typeof document !== 'undefined') {
  const root = document.querySelector('.market-airship');

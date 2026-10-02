@@ -37,6 +37,22 @@ test('missing WebGL keeps the original ship and all three live price links usabl
  assert.equal(root.querySelector('.airship-display').outerHTML, content);
  assert.equal(root.querySelectorAll('a[href^="/graphs"]').length, 3);
 });
+test('phones skip decorative graphics and resizing back to desktop restores them', t => {
+ const { dom, root } = setup(t);
+ const media = new dom.window.EventTarget(); media.matches = false;
+ const compact = new dom.window.EventTarget(); compact.matches = true;
+ const signals = [];
+ const stop = mountAirshipMarquee(root, { media, compact, start: async (_root, { signal }) => { signals.push(signal); } });
+ assert.equal(signals.length, 0);
+ assert.equal(root.querySelectorAll('a[href^="/graphs"]').length, 3);
+ compact.matches = false; compact.dispatchEvent(new dom.window.Event('change'));
+ assert.equal(signals.length, 1);
+ compact.matches = true; compact.dispatchEvent(new dom.window.Event('change'));
+ assert.equal(signals[0].aborted, true);
+ stop();
+ compact.matches = false; compact.dispatchEvent(new dom.window.Event('change'));
+ assert.equal(signals.length, 1);
+});
 test('cancellation while the artwork loads never creates a graphics context or hides the image', async t => {
  const { dom, root } = setup(t); let decoded;
  root.querySelector('img').decode = () => new Promise(resolve => { decoded = resolve; });
