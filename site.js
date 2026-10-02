@@ -131,7 +131,7 @@ async function init() {
   addItem('clock', main.querySelector('.market-clock'), 300);
   addItem('one-word', main.querySelector('.one-word-link'), 85);
   addItem('ai-ticker', main.querySelector('.ai-ticker'), 680);
-  addItem('uv-machine', main.querySelector('.uv-machine'), 340);
+  addItem('uv-machine', main.querySelector('.uv-machine'), 280);
   if (isDrawing(monitorDrawing)) items.get('monitor').drawing = monitorDrawing;
   const ids = Array.isArray(manifest.ids) ? [...new Set(manifest.ids.filter(validId))].slice(0, 100) : [];
   const drawings = await Promise.all(ids.map(id => read(`assets/doodles/${id}.json`, null)));
