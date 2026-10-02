@@ -1,5 +1,6 @@
 // The selected local Marquee study, at its original pace and intensity.
 // Decorative light pixels animate independently of the live HTML prices.
+import { createFogRenderer } from './airship-fog.js';
 export const vertexShader = `
 attribute vec2 a_position;
 varying vec2 v_uv;
@@ -65,7 +66,7 @@ function makeMasks(artwork, doc) {
  glowContext.filter = 'blur(4.5px)'; glowContext.drawImage(lights, 0, 0);
  return { mask: source, glow };
 }
-export async function createMarqueeRenderer(root, { signal } = {}) {
+export async function createMarqueeRenderer(root, { signal, startFog = createFogRenderer } = {}) {
  const doc = root.ownerDocument, view = doc.defaultView;
  const artwork = root.querySelector('.airship-artwork'); await artwork.decode();
  if (signal?.aborted) return;
@@ -74,10 +75,10 @@ export async function createMarqueeRenderer(root, { signal } = {}) {
  const gl = surface.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: false, depth: false });
  if (!gl) return;
  const shaders = [], textures = [];
- let program, buffer, observer, frame, disposed = false, elapsed = 0, last = 0, lastDraw = 0;
+ let program, buffer, observer, frame, fog, disposed = false, elapsed = 0, last = 0, lastDraw = 0;
  function destroy() {
   if (disposed) return;
-  disposed = true; view.cancelAnimationFrame(frame); observer?.disconnect();
+  disposed = true; view.cancelAnimationFrame(frame); observer?.disconnect(); fog?.destroy();
   doc.removeEventListener('visibilitychange', restart); signal?.removeEventListener('abort', destroy);
   surface.remove(); root.removeAttribute('data-marquee');
   for (const texture of textures) gl.deleteTexture(texture);
@@ -87,7 +88,7 @@ export async function createMarqueeRenderer(root, { signal } = {}) {
  }
  function restart() { view.cancelAnimationFrame(frame); last = 0; if (!doc.hidden && !disposed) frame = view.requestAnimationFrame(tick); }
  let time;
- function render() { if (!disposed) { gl.uniform1f(time, elapsed); gl.drawArrays(gl.TRIANGLES, 0, 6); } }
+ function render() { if (!disposed) { gl.uniform1f(time, elapsed); gl.drawArrays(gl.TRIANGLES, 0, 6); fog?.render(elapsed); } }
  function tick(now) {
   if (disposed || doc.hidden) return;
   elapsed += last ? Math.min((now - last) / 1000, .1) : 0; last = now;
@@ -127,6 +128,10 @@ export async function createMarqueeRenderer(root, { signal } = {}) {
   observer = new view.ResizeObserver(resize); observer.observe(root); resize();
   root.dataset.marquee = 'ready';
   doc.addEventListener('visibilitychange', restart); signal?.addEventListener('abort', destroy, { once: true }); restart();
+  startFog(root, { signal }).then(renderer => {
+   if (disposed) renderer?.destroy();
+   else { fog = renderer; fog?.render(elapsed); }
+  }).catch(() => {}); // Unsupported fog leaves the marquee and live prices usable.
  } catch (error) { destroy(); throw error; }
  return { destroy };
 }

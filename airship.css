@@ -1,6 +1,7 @@
 .market-airship { position: relative; width: 680px; aspect-ratio: 1672 / 941; flex: none; pointer-events: none; }
 .airship-artwork { position: relative; z-index: 0; display: block; width: 100%; height: auto; user-select: none; pointer-events: none; }
 .airship-lights { position: absolute; z-index: 1; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.airship-fog { position: absolute; z-index: 5; left: -16%; top: -20%; width: 132%; height: 140%; pointer-events: none; }
 .market-airship[data-marquee="ready"] .airship-artwork { visibility: hidden; }
 .airship-display {
  position: absolute; z-index: 3; left: 0; top: 0; width: 360px; height: 560px;
