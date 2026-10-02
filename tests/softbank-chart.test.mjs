@@ -60,13 +60,13 @@ test('keyboard and touch inspection reach both ends; refresh preserves the inspe
  svg.dispatchEvent(new dom.window.MouseEvent('pointerdown', { clientX: 172.5 }));
  assert.equal(price(), '6,144.00'); assert.equal(root.querySelector('time').dateTime, new Date(NOW - DAY / 2).toISOString());
 });
-test('failed refresh preserves the drawn history and labels saved values; a cold failure can be retried', async t => {
+test('failed refresh preserves the drawn history and marks it stale; a cold failure can be retried', async t => {
  let calls = 0;
  const { root, svg, chart } = setup(t, async () => ++calls === 1 ? Response.json(sample) : new Response('', { status: 503 }));
  await settle(); const path = root.querySelector('.softbank-line').getAttribute('d');
  await chart.refresh();
  assert.equal(root.querySelector('.softbank-line').getAttribute('d'), path);
- assert.equal(svg.dataset.stale, 'true'); assert.match(root.querySelector('output').title, /Saved price/);
+ assert.equal(svg.dataset.stale, 'true');
  assert.equal(root.querySelector('time').textContent, '');
  let coldCalls = 0;
  const cold = setup(t, async () => ++coldCalls === 1 ? new Response('', { status: 503 }) : Response.json(sample)); await settle();

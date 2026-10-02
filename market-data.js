@@ -76,7 +76,4 @@ export function subscribeQuotes(listener) {
 }
 export function quoteState(element, quote) {
  element.dataset.state = quote ? (quote.stale ? 'stale' : 'live') : 'offline';
- element.title = quote
-  ? `${quote.stale ? 'Saved price' : 'Latest price'} · ${new Date(quote.asOf).toLocaleString()} · Open price history`
-  : 'Price unavailable · Open price history';
 }

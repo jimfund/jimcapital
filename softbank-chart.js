@@ -60,9 +60,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
   output.textContent = formatPrice(quote?.price ?? geometry?.points.at(-1)?.price, 'points');
   output.dataset.state = quote ? (quote.stale ? 'stale' : 'live') : data?.stale ? 'stale' : 'live';
   time.textContent = '';
-  const asOf = quote?.asOf ?? geometry?.points.at(-1)?.time;
-  output.title = asOf ? `${data?.stale || quote?.stale ? 'Saved price' : 'Latest price'} · ${new Date(asOf).toLocaleString()}` : '';
-  time.removeAttribute('datetime'); time.removeAttribute('title');
+  time.removeAttribute('datetime');
  }
  function inspect(next) {
   if (!geometry || editing()) return;
@@ -70,7 +68,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
   const p = geometry.points[index]; selectedTime = p.time;
   output.textContent = formatPrice(p.price, 'points'); output.dataset.state = data.stale ? 'stale' : 'live';
   time.textContent = timeAgo(p.time);
-  time.dateTime = new Date(p.time).toISOString(); time.title = new Date(p.time).toLocaleString();
+  time.dateTime = new Date(p.time).toISOString();
   const x = geometry.x(p.time), y = geometry.y(p.price);
   const cursor = $('.softbank-cursor'), point = $('.softbank-point');
   cursor.setAttribute('x1', x); cursor.setAttribute('x2', x); cursor.removeAttribute('hidden');
