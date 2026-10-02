@@ -1,23 +1,11 @@
 import { fitScene } from './layout-model.js';
 
-// The SoftBank readout and its two ink drawings share a plane so they stay aligned.
-const DEPTH = {
-  angel: .68,
-  prediction: .84,
-  softbank: .94,
-  '10d61a37-3bd9-42c1-b303-6ab3f92251db': .94,
-  'beba7e25-b7b3-4fef-a49d-6f97b4f3a852': .94,
-  monitor: 1.04,
-  clock: 1.1,
-  'one-word': 1.14,
-  'ai-ticker': 1.2,
-};
 const CONTROLS = 'a, button, input, select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [role="link"], [role="button"], [tabindex]:not([tabindex="-1"])';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function canvasGeometry(rects, width, height) {
   if (!rects.length) return { scale: 1, x: width / 2, y: height / 2 };
-  const fit = fitScene(rects, width, Math.max(1, height - 64), 32);
+  const fit = fitScene(rects, width, height, 32);
   // On phones, leave room to explore instead of shrinking every object to a speck.
   const scale = clamp(fit.scale, .55, 1);
   const left = Math.min(...rects.map(rect => rect.x));
@@ -25,7 +13,7 @@ export function canvasGeometry(rects, width, height) {
   const right = Math.max(...rects.map(rect => rect.x + rect.width));
   const bottom = Math.max(...rects.map(rect => rect.y + rect.height));
   return { scale, x: width / 2 - (left + right) * scale / 2,
-    y: (height - 64) / 2 - (top + bottom) * scale / 2 };
+    y: height / 2 - (top + bottom) * scale / 2 };
 }
 
 export function mountCanvasView(main, items, getLayout) {
@@ -40,29 +28,16 @@ export function mountCanvasView(main, items, getLayout) {
   main.classList.add('canvas-viewport');
   main.tabIndex = 0;
   main.setAttribute('aria-label', 'Explore the jim.capital canvas');
-  main.setAttribute('aria-describedby', 'canvas-help');
   main.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown ArrowLeft ArrowRight Home');
-  const navigation = doc.createElement('div');
-  navigation.className = 'canvas-navigation';
-  navigation.innerHTML = '<p id="canvas-help">Drag to explore <span aria-hidden="true">·</span> scroll to drift<span class="canvas-keyboard-help">. Arrow keys move; Home resets the view.</span></p><button type="button" title="Reset view (Home)" aria-label="Reset canvas view">↺ <span>Reset view</span></button>';
-  doc.body.append(navigation);
-  const resetButton = navigation.querySelector('button');
-  const angelImage = items.get('angel')?.element.querySelector('.angel-window img');
 
-  const depth = id => preference.matches ? 1 : (DEPTH[id] ?? .94);
+  // The angel is the only background plane; every other object moves together.
+  const depth = id => id === 'angel' && !preference.matches ? .68 : 1;
   function render() {
     for (const layer of layers) {
       const { element, x, y, zoom, id } = layer;
       const speed = depth(id);
       element.style.transform = `translate3d(${geometry.x + x * geometry.scale + camera.x * speed}px, ${geometry.y + y * geometry.scale + camera.y * speed}px, 0) scale(${zoom * geometry.scale})`;
     }
-    if (angelImage) {
-      // Overscan keeps the picture behind every edge of the smaller frame.
-      const x = preference.matches ? 0 : clamp(-camera.x * .05, -12, 12);
-      const y = preference.matches ? 0 : clamp(-camera.y * .05, -18, 18);
-      angelImage.style.transform = `translate3d(${x}px, ${y}px, 0) scale(1.16)`;
-    }
-    resetButton.disabled = Math.hypot(target.x, target.y, camera.x, camera.y) < .5;
   }
 
   function tick(time) {
@@ -90,7 +65,7 @@ export function mountCanvasView(main, items, getLayout) {
     layers = [...items].map(([id, item]) => {
       const position = layout.items[id];
       const zoom = position.width / item.nativeWidth;
-      item.element.style.zIndex = position.z;
+      item.element.style.zIndex = id === 'angel' ? 0 : Math.max(1, position.z);
       return { ...position, id, element: item.element, zoom, height: item.element.offsetHeight * zoom };
     });
     const width = main.clientWidth, height = main.clientHeight;
@@ -152,7 +127,6 @@ export function mountCanvasView(main, items, getLayout) {
   }, { passive: false });
 
   const reset = () => { finishDrag({}); moveTo(0, 0); };
-  resetButton.addEventListener('click', reset);
   main.addEventListener('keydown', event => {
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || isControl(event.target)) return;
     const step = event.shiftKey ? 160 : 64;
@@ -170,7 +144,7 @@ export function mountCanvasView(main, items, getLayout) {
     if (!item) return;
     const rect = event.target.getBoundingClientRect();
     const viewport = main.getBoundingClientRect();
-    const gutter = 24, bottom = viewport.bottom - 64;
+    const gutter = 24, bottom = viewport.bottom - gutter;
     const x = rect.left < viewport.left + gutter ? viewport.left + gutter - rect.left
       : rect.right > viewport.right - gutter ? viewport.right - gutter - rect.right : 0;
     const y = rect.top < viewport.top + gutter ? viewport.top + gutter - rect.top

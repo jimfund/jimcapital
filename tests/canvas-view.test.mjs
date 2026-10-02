@@ -35,6 +35,9 @@ function fixture(t, reduced = false) {
     ['angel', 420, 78, '<div class="angel-window"><img alt=""></div>'],
     ['ai-ticker', 704, 20, '<a href="#prices">Prices</a>'],
     ['clock', 58, 344, '<button type="button">Spin</button>'],
+    ['prediction', 286, 460, '<img alt="">'],
+    ['monitor', 617, 395, '<section role="link" tabindex="0"></section>'],
+    ['one-word', 810, 280, '<a href="#one-word">One word</a>'],
     ['softbank', 111, 156, '<svg tabindex="0" role="slider"></svg>'],
     ['10d61a37-3bd9-42c1-b303-6ab3f92251db', 110, 100, '<canvas></canvas>'],
   ]) {
@@ -67,7 +70,7 @@ function fixture(t, reduced = false) {
     target.dispatchEvent(event); flush(); return event;
   };
   return { main, doc, items, position, pointer, wheel, key, flush, controller, size,
-    reset: () => { doc.querySelector('.canvas-navigation button').click(); flush(); },
+    reset: () => key('Home'),
     reduce: value => { preference.matches = value; changePreference(); flush(); },
   };
 }
@@ -84,22 +87,21 @@ test('desktop starts with the scene in view, while phone objects stay large enou
   assert.ok(Number.isFinite(canvasGeometry([], 0, 0).scale));
 });
 
-test('mouse and touch drags move both axes with different depths; reset restores the starting view', t => {
+test('mouse and touch drags keep every foreground object on one plane, with only the angel behind it', t => {
   for (const type of ['mouse', 'touch']) {
     const f = fixture(t);
-    const angel = f.position('angel'), ship = f.position('ai-ticker');
+    const initial = new Map([...f.items.keys()].map(id => [id, f.position(id)]));
     f.pointer('pointerdown', 400, 300, f.main, { type });
     f.pointer('pointermove', 500, 350, f.main, { type }); f.flush();
     f.pointer('pointerup', 500, 350, f.main, { type });
-    assert.ok(Math.abs(f.position('angel')[0] - angel[0] - 68) < .001);
-    assert.ok(Math.abs(f.position('angel')[1] - angel[1] - 34) < .001);
-    assert.ok(Math.abs(f.position('ai-ticker')[0] - ship[0] - 120) < .001);
+    for (const [id, start] of initial) {
+      const movement = id === 'angel' ? [68, 34] : [100, 50];
+      f.position(id).forEach((value, axis) => assert.ok(Math.abs(value - start[axis] - movement[axis]) < .001, id));
+      assert.equal(Number(f.items.get(id).element.style.zIndex), id === 'angel' ? 0 : 2);
+    }
     assert.equal(f.main.classList.contains('is-panning'), false);
-    assert.equal(f.doc.querySelector('button[aria-label="Reset canvas view"]').disabled, false);
     f.reset();
-    assert.deepEqual(f.position('angel'), angel);
-    assert.deepEqual(f.position('ai-ticker'), ship);
-    assert.equal(f.doc.querySelector('button[aria-label="Reset canvas view"]').disabled, true);
+    for (const [id, start] of initial) assert.deepEqual(f.position(id), start);
   }
 });
 
@@ -113,7 +115,7 @@ test('wheel and trackpad movement preserve chart alignment and support horizonta
   assert.ok(chartMove[0] < 0 && chartMove[1] < 0);
   f.reset();
   f.wheel({ deltaY: 3, deltaMode: 1, shiftKey: true });
-  assert.ok(Math.abs(f.position('softbank')[0] - chart[0] + 48 * .94) < .001);
+  assert.ok(Math.abs(f.position('softbank')[0] - chart[0] + 48) < .001);
   assert.equal(f.position('softbank')[1], chart[1]);
 });
 
@@ -131,6 +133,8 @@ test('links, the clock, chart scrubbing, and browser zoom keep their native inte
 
 test('keyboard panning is bounded and Home returns to the complete starting composition', t => {
   const f = fixture(t);
+  assert.equal(f.doc.querySelector('.canvas-navigation, #canvas-help'), null);
+  assert.equal(f.main.hasAttribute('aria-describedby'), false);
   const start = f.position('angel');
   assert.equal(f.key('ArrowRight').defaultPrevented, true);
   assert.ok(f.position('angel')[0] < start[0]);
@@ -153,17 +157,6 @@ test('reduced motion moves all objects together and can change while the canvas 
   assert.notEqual(f.position('angel')[0] - angel[0], f.position('ai-ticker')[0] - ship[0]);
   f.reset();
   assert.deepEqual(f.position('angel'), angel);
-});
-
-test('the angel shifts behind its frame without exposing an empty edge and respects reduced motion', t => {
-  const f = fixture(t);
-  const image = f.main.querySelector('.angel-window img');
-  f.wheel({ deltaX: 100, deltaY: 80 });
-  assert.equal(image.style.transform, 'translate3d(5px, 4px, 0) scale(1.16)');
-  f.wheel({ deltaX: 1e6, deltaY: 1e6 });
-  assert.equal(image.style.transform, 'translate3d(12px, 18px, 0) scale(1.16)');
-  f.reduce(true);
-  assert.equal(image.style.transform, 'translate3d(0px, 0px, 0) scale(1.16)');
 });
 
 test('canceled drags release capture and secondary touch pointers do not move the view', t => {
