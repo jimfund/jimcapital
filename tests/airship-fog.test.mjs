@@ -12,7 +12,7 @@ function setup(t, { compile = true, smallArtwork = false } = {}) {
  artwork.decode = async () => {};
  Object.defineProperties(artwork, { naturalWidth: { value: smallArtwork ? 2 : 1672 }, naturalHeight: { value: smallArtwork ? 2 : 941 } });
  Object.defineProperty(root, 'clientWidth', { value: 1120, configurable: true });
- const state = { uniforms: {}, draws: 0, deleted: [], observers: [], frames: new Map() };
+ const state = { uniforms: {}, draws: 0, deleted: [], observers: [], frames: new Map(), wakeUploads: [] };
  let frameId = 0;
  view.requestAnimationFrame = fn => { state.frames.set(++frameId, fn); return frameId; };
  view.cancelAnimationFrame = id => state.frames.delete(id);
@@ -29,6 +29,7 @@ function setup(t, { compile = true, smallArtwork = false } = {}) {
   uniform4fv: (name, value) => { state.uniforms[name] = Array.from(value); },
   uniform3fv: (name, value) => { state.uniforms[name] = Array.from(value); },
   drawArrays: () => { state.draws++; },
+  texSubImage2D: (...args) => { state.wakeUploads.push(Uint8Array.from(args.at(-1))); },
   deleteTexture: value => state.deleted.push(value), deleteShader: value => state.deleted.push(value),
   deleteBuffer: value => state.deleted.push(value), deleteProgram: value => state.deleted.push(value),
  };
@@ -85,6 +86,18 @@ test('fog cancellation during image decoding never allocates graphics or adds an
  controller.abort(); resolve(); assert.equal(await pending, undefined); assert.equal(root.querySelector('canvas'), null);
 });
 
+test('the wake texture uploads only when a cursor trail changes, then returns to idle', async t => {
+ const { root, view, state } = setup(t), renderer = await createFogRenderer(root);
+ t.after(() => renderer.destroy());
+ renderer.surface.getBoundingClientRect = () => ({ left: 100, top: 50, width: 640, height: 382 });
+ assert.equal(state.uniforms.u_wake, 2); renderer.render(.1); assert.equal(state.wakeUploads.length, 0);
+ root.querySelector('.ai-quote').dispatchEvent(new view.MouseEvent('pointermove', { clientX: 420, clientY: 241, bubbles: true }));
+ renderer.render(.2); assert.equal(state.wakeUploads.length, 1); assert.ok(state.wakeUploads[0].some(value => value > 0));
+ renderer.render(.3); assert.equal(state.wakeUploads.length, 2);
+ renderer.render(10); assert.ok(state.wakeUploads.at(-1).every(value => value === 0));
+ const uploads = state.wakeUploads.length; renderer.render(11); assert.equal(state.wakeUploads.length, uploads);
+});
+
 test('failed fog compilation cleans up without changing the ship or its prices', async t => {
  const { root, state } = setup(t, { compile: false }), before = root.innerHTML;
  await assert.rejects(createFogRenderer(root), /Shader unavailable/);
@@ -96,7 +109,7 @@ test('losing the fog graphics context removes its overlay and releases resources
  root.querySelector('.airship-fog').dispatchEvent(new view.Event('webglcontextlost', { cancelable: true }));
  const draws = state.draws, deleted = state.deleted.length;
  renderer.render(20); renderer.destroy();
- assert.equal(state.draws, draws); assert.equal(state.deleted.length, deleted); assert.equal(deleted, 6);
+ assert.equal(state.draws, draws); assert.equal(state.deleted.length, deleted); assert.equal(deleted, 7);
  assert.ok(state.observers.every(observer => observer.disconnected));
  assert.equal(root.querySelector('.airship-fog'), null); assert.equal(root.querySelectorAll('.ai-quote').length, 3);
 });

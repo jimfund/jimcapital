@@ -1,5 +1,6 @@
 // Heterogeneous 3D fog, integrated in front of a depth approximation of the
 // photographed ship. The resulting transmittance also occludes the HTML screen.
+import { createFogWake } from './airship-fog-wake.js';
 export const FOG_SETTINGS = Object.freeze({ density: 1, wind: .7, scatter: 2.5 });
 export const fogVertexShader = `
 attribute vec2 a_position;
@@ -11,6 +12,7 @@ precision highp float;
 varying vec2 v_uv;
 uniform sampler2D u_noise;
 uniform sampler2D u_ship;
+uniform sampler2D u_wake;
 uniform float u_time;
 uniform float u_density;
 uniform float u_scatter;
@@ -56,14 +58,17 @@ void main() {
  float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
  float edge = smoothstep(0., .09, v_uv.x) * smoothstep(0., .09, 1. - v_uv.x)
             * smoothstep(0., .10, v_uv.y) * smoothstep(0., .10, 1. - v_uv.y);
+ // Clear the actual volume and its scattered light along the cursor's trail.
+ float presence = 1. - .995 * texture2D(u_wake, vec2(v_uv.x, 1. - v_uv.y)).r;
+ float cameraDensity = edge * presence, skyDensity = .47 * presence;
  vec3 point = vec3((p.x - .5) * 2.4, (.5 - p.y) * 1.5, -1.48 + jitter * stepSize);
  vec3 radiance = vec3(0.);
  float transmission = 1.;
  for (int sampleIndex = 0; sampleIndex < 16; sampleIndex++) {
-  float rho = densityAt(point) * edge;
+  float rho = densityAt(point) * cameraDensity;
   float attenuation = exp(-rho * stepSize * 1.8);
   // A short sample toward the sky adds soft self-shadowing to the billows.
-  float sky = exp(-densityAt(point + vec3(-.17, .30, .16)) * .47);
+  float sky = exp(-densityAt(point + vec3(-.17, .30, .16)) * skyDensity);
   vec3 daylight = mix(vec3(.72, .79, .87), vec3(.98, .99, 1.), sky);
   vec3 nightlight = mix(vec3(.075, .11, .16), vec3(.25, .31, .39), sky);
   vec3 incoming = mix(daylight, nightlight, u_night);
@@ -136,10 +141,10 @@ export async function createFogRenderer(root, { signal } = {}) {
  const gl = surface.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: false, depth: false });
  if (!gl) return;
  const shaders = [], textures = [], lights = fogLightUniforms();
- let program, buffer, observer, uniforms, elapsed = 0, disposed = false, dirty = true, drawnTime;
+ let program, buffer, observer, uniforms, wake, elapsed = 0, disposed = false, dirty = true, drawnTime;
  function destroy() {
   if (disposed) return;
-  disposed = true; observer?.disconnect(); signal?.removeEventListener('abort', destroy); surface.remove();
+  disposed = true; observer?.disconnect(); wake?.destroy(); signal?.removeEventListener('abort', destroy); surface.remove();
   for (const texture of textures) gl.deleteTexture(texture);
   for (const shader of shaders) gl.deleteShader(shader);
   if (buffer) gl.deleteBuffer(buffer);
@@ -150,6 +155,10 @@ export async function createFogRenderer(root, { signal } = {}) {
   if (disposed) return;
   elapsed = time;
   if (!dirty && drawnTime === elapsed) return;
+  if (wake.update(elapsed)) {
+   gl.activeTexture(gl.TEXTURE0 + 2); gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+   gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, wake.width, wake.height, gl.LUMINANCE, gl.UNSIGNED_BYTE, wake.data);
+  }
   gl.uniform1f(uniforms.time, elapsed * FOG_SETTINGS.wind);
   fogLightUniforms(elapsed, lights); gl.uniform4fv(uniforms['lights[0]'], lights.positions);
   gl.drawArrays(gl.TRIANGLES,0,6);
@@ -166,12 +175,17 @@ export async function createFogRenderer(root, { signal } = {}) {
   gl.useProgram(program);
   buffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buffer); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]), gl.STATIC_DRAW);
   const position = gl.getAttribLocation(program, 'a_position'); gl.enableVertexAttribArray(position); gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-  for (const [index,name] of [[0,'noise'],[1,'ship']]) {
+  wake = createFogWake(surface);
+  for (const [index,name] of [[0,'noise'],[1,'ship'],[2,'wake']]) {
    const texture = gl.createTexture(); textures.push(texture);
    gl.activeTexture(gl.TEXTURE0 + index); gl.bindTexture(gl.TEXTURE_2D, texture);
    for (const wrap of [gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D,wrap,index ? gl.CLAMP_TO_EDGE : gl.REPEAT);
    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
-   if (index) { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,artwork); }
+   if (index === 2) {
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,wake.width,wake.height,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,wake.data);
+   }
+   else if (index === 1) { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true); gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,artwork); }
    else gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,256,256,0,gl.RGBA,gl.UNSIGNED_BYTE,makeNoiseTexture());
    gl.uniform1i(gl.getUniformLocation(program,'u_' + name),index);
   }
