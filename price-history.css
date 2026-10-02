@@ -2,25 +2,26 @@
 [data-history]:focus-visible { outline: 2px dashed #444; outline-offset: 7px; }
 .editing [data-history] { cursor: move; }
 [data-state="stale"] { opacity: .5; }
-#price-history-button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fffffff5; color: #333; font: 13px system-ui, sans-serif; cursor: pointer; }
+#price-history-button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fffffff5; color: #333; font: 13px system-ui, sans-serif; cursor: pointer; text-decoration: none; }
 #price-history-button:hover { background: #eee; }
 #price-history-button:focus-visible { outline: 2px solid #828c78; outline-offset: 3px; }
-body.history-open { overflow: hidden; }
+.graphs-page { margin: 0; min-height: 100svh; background: #fffef9; color: #292724; font: 14px/1.5 'Courier New', monospace; }
+.graphs-page * { box-sizing: border-box; }
+.graphs-nav { width: min(760px, calc(100% - 24px)); margin: 24px auto 0; padding: 0 24px; }
+.graphs-nav a { color: #655e54; text-decoration: none; }
+.graphs-nav a:hover { text-decoration: underline; }
 .price-history {
- width: min(760px, calc(100vw - 24px)); max-height: calc(100svh - 32px);
- margin: auto; padding: 24px; overflow: auto;
- color: #292724; background: #fffef9; border: 1px solid #484138; border-radius: 4px;
- box-shadow: 5px 6px 0 #302a2429; font: 14px/1.5 'Courier New', monospace;
+ width: min(760px, calc(100% - 24px));
+ margin: auto; padding: 24px;
+ color: #292724; font: 14px/1.5 'Courier New', monospace;
 }
-.price-history::backdrop { background: #29221c65; }
 .price-history [hidden] { display: none !important; }
 .price-history button, .price-history select { font: inherit; color: inherit; }
 .price-history button { cursor: pointer; border: 1px solid #c9c3b8; border-radius: 3px; background: transparent; min-height: 36px; padding: 5px 12px; }
 .price-history button:hover { background: #f0ece2; }
 .price-history :focus-visible { outline: 2px solid #765228; outline-offset: 3px; }
 .history-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-.history-heading h2 { margin: 0; font-size: 21px; font-weight: 600; }
-.price-history .history-close { border-color: transparent; font-size: 26px; padding: 0 8px; }
+.history-heading h1 { margin: 0; font-size: 21px; font-weight: 600; }
 .history-controls { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 20px 0 22px; }
 .history-market { display: grid; gap: 4px; font-size: 12px; }
 .history-market select { max-width: 100%; border: 1px solid #c9c3b8; border-radius: 3px; padding: 8px; background: #fffef9; font-size: 14px; }

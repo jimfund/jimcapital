@@ -11,6 +11,16 @@ function database(){
  return {prepare(sql){const statement=sqlite.prepare(sql);let args=[];return {bind(...values){args=values;return this;},async first(){return statement.get(...args)||null;},async all(){return {results:statement.all(...args)};},async run(){const r=statement.run(...args);return {meta:{changes:Number(r.changes)}};}};},async batch(statements){sqlite.exec('BEGIN');try{const results=[];for(const s of statements)results.push(await s.run());sqlite.exec('COMMIT');return results;}catch(e){sqlite.exec('ROLLBACK');throw e;}}};
 }
 const origin='https://jim.example';
+test('graphs is a public page, canonical URLs preserve selections, and asset redirects do not loop',async()=>{
+ assert.equal(slugOK('graphs'),false);
+ const env={DB:database(),ASSETS:{fetch:async request=>new URL(request.url).pathname==='/graphs.html'?new Response(null,{status:308,headers:{Location:origin+'/graphs'}}):new Response('Graphs page')}};
+ const page=await worker.fetch(new Request(origin+'/graphs?symbol=SOFTBANK&range=1d'),env);
+ assert.equal(page.status,200);assert.equal(await page.text(),'Graphs page');
+ for(const path of ['/graphs/','/graphs.html']){
+  const response=await worker.fetch(new Request(origin+path+'?symbol=BTC&range=1m'),env);
+  assert.equal(response.status,308);assert.equal(response.headers.get('Location'),origin+'/graphs?symbol=BTC&range=1m');
+ }
+});
 function setup(){
  const env={DB:database(),PUBLISHING_SECRET:'test-secret',ONE_WORD_OWNER_ID:'oneword-owner',ASSETS:{fetch:async()=>new Response('not found',{status:404})}};
  const request=async(path,{user,method='GET',data,headers={}}={})=>worker.fetch(new Request(origin+path,{method,headers:{...(user?{'oai-authenticated-user-id':user}:{}),...(data?{'Content-Type':'application/json',Origin:origin}:{}),...headers},...(data?{body:JSON.stringify(data)}:{})}),env);

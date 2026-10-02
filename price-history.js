@@ -18,11 +18,13 @@ export function chartGeometry(points, step) {
 }
 
 export function mountPriceHistory(doc = document) {
- const dialog = doc.createElement('dialog');
- dialog.className = 'price-history';
- dialog.setAttribute('aria-labelledby', 'history-title');
- dialog.innerHTML = `
-  <div class="history-heading"><h2 id="history-title">Price history</h2><button type="button" class="history-close" aria-label="Close price history">×</button></div>
+ const host = doc.querySelector('#graphs-root');
+ if (!host) return null;
+ const panel = doc.createElement('section');
+ panel.className = 'price-history';
+ panel.setAttribute('aria-labelledby', 'history-title');
+ panel.innerHTML = `
+  <div class="history-heading"><h1 id="history-title">Graphs</h1></div>
   <div class="history-controls">
    <label class="history-market">Market<select aria-label="Market">${Object.entries(names).map(([key, name]) => `<option value="${key}">${name}</option>`).join('')}</select></label>
    <div class="history-ranges" role="group" aria-label="Time range">
@@ -46,12 +48,20 @@ export function mountPriceHistory(doc = document) {
   <p id="history-help" class="history-help" hidden>Move across the chart or use ← → to inspect a price. Times are local; gaps mean no available candles.</p>
   <div class="history-feedback"><p class="history-status" role="status" aria-live="polite"></p><button type="button" class="history-retry" hidden>Try again</button></div>
   <p class="history-source"></p>`;
- doc.body.append(dialog);
- const $ = selector => dialog.querySelector(selector);
+ host.append(panel);
+ const $ = selector => panel.querySelector(selector);
  const select = $('select'), plot = $('.history-plot'), svg = $('svg');
  const status = $('.history-status'), retry = $('.history-retry');
- let range = '1w', controller, refreshTimer, data, geometry, index = 0, trigger;
- const editing = () => doc.body.classList.contains('editing') || new URL(doc.location.href).searchParams.get('edit') === '1';
+ let range = '1d', controller, refreshTimer, data, geometry, index = 0, disposed = false;
+ const params = new URL(doc.location.href).searchParams;
+ select.value = Object.hasOwn(names, params.get('symbol')) ? params.get('symbol') : 'SOFTBANK';
+ if (['1d', '1w', '1m', '1y'].includes(params.get('range'))) range = params.get('range');
+ function reflectSelection() {
+  panel.querySelectorAll('[data-range]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.range === range)));
+  const url = new URL(doc.location.href);
+  url.searchParams.set('symbol', select.value); url.searchParams.set('range', range);
+  doc.defaultView.history.replaceState(null, '', url);
+ }
 
  function inspect(next) {
   if (!data?.points.length) return;
@@ -93,7 +103,7 @@ export function mountPriceHistory(doc = document) {
   });
   $('.history-high').textContent = formatPrice(geometry.high, data.unit);
   $('.history-low').textContent = formatPrice(geometry.low, data.unit);
-  const dates = dialog.querySelectorAll('.history-dates span');
+  const dates = panel.querySelectorAll('.history-dates span');
   dates[0].textContent = data.range === '1d' ? instant(first.time) : date(first.time);
   dates[1].textContent = data.range === '1d' ? instant(last.time) : date(last.time);
   svg.setAttribute('aria-label', `${data.name}, ${data.points.length} ${data.interval} candles, ${date(first.time)} to ${date(last.time)}. Low ${formatPrice(geometry.low, data.unit)}, high ${formatPrice(geometry.high, data.unit)}.`);
@@ -108,7 +118,7 @@ export function mountPriceHistory(doc = document) {
   clearTimeout(refreshTimer);
   const request = controller = new AbortController();
   const timeout = setTimeout(() => request.abort(), 20000);
-  dialog.setAttribute('aria-busy', 'true');
+  panel.setAttribute('aria-busy', 'true');
   retry.hidden = true;
   if (!quiet) {
    data = null;
@@ -124,46 +134,26 @@ export function mountPriceHistory(doc = document) {
    const response = await fetch(`/api/markets/history?${new URLSearchParams({ symbol: select.value, range })}`, { signal: request.signal, cache: 'no-store' });
    if (!response.ok) throw new Error('History unavailable');
    const result = await response.json();
-   if (controller !== request || !dialog.open) return;
+   if (controller !== request || disposed) return;
    if (!Array.isArray(result.points)) throw new Error('Invalid history');
    data = result;
    render();
   } catch {
-   if (controller !== request || !dialog.open) return;
+   if (controller !== request || disposed) return;
    status.textContent = data?.points.length ? 'Showing previously loaded history. The latest update could not be loaded.' : 'Price history could not be loaded. Please try again.';
    retry.hidden = false;
   } finally {
    clearTimeout(timeout);
    if (controller === request) {
-    dialog.setAttribute('aria-busy', 'false');
-    if (dialog.open) refreshTimer = setTimeout(() => { if (!doc.hidden) load(true); }, 60000);
+    panel.setAttribute('aria-busy', 'false');
+    if (!disposed) refreshTimer = setTimeout(() => { if (!doc.hidden) load(true); }, 60000);
    }
   }
  }
- function open(symbol, source) {
-  if (editing()) return;
-  trigger = source;
-  select.value = Object.hasOwn(names, symbol) ? symbol : 'SP500';
-  if (!dialog.open) dialog.showModal();
-  doc.body.classList.add('history-open');
-  load();
- }
- $('.history-close').addEventListener('click', () => dialog.close());
- dialog.addEventListener('close', () => {
-  controller?.abort(); controller = null;
-  clearTimeout(refreshTimer);
-  doc.body.classList.remove('history-open');
-  trigger?.focus();
- });
- dialog.addEventListener('click', event => {
-  if (event.target !== dialog) return;
-  const box = dialog.getBoundingClientRect();
-  if (event.clientX < box.left || event.clientX > box.right || event.clientY < box.top || event.clientY > box.bottom) dialog.close();
- });
- select.addEventListener('change', () => load());
- dialog.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {
+ select.addEventListener('change', () => { reflectSelection(); load(); });
+ panel.querySelectorAll('[data-range]').forEach(button => button.addEventListener('click', () => {
   range = button.dataset.range;
-  dialog.querySelectorAll('[data-range]').forEach(b => b.setAttribute('aria-pressed', String(b === button)));
+  reflectSelection();
   load();
  }));
  retry.addEventListener('click', () => load(!!data));
@@ -180,18 +170,14 @@ export function mountPriceHistory(doc = document) {
   data.points.forEach((p, i) => { if (Math.abs(geometry.x(p.time) - x) < Math.abs(geometry.x(data.points[nearest].time) - x)) nearest = i; });
   inspect(nearest);
  });
- doc.addEventListener('visibilitychange', () => { if (dialog.open && !doc.hidden) load(true); });
- doc.querySelector('#price-history-button')?.addEventListener('click', event => open(select.value, event.currentTarget));
- doc.addEventListener('click', event => {
-  const target = event.target.closest('[data-history]');
-  if (target) open(target.dataset.history, target.closest('[tabindex]') || target);
- });
- doc.addEventListener('keydown', event => {
-  const target = event.target.closest('[data-history][tabindex]');
-  if (target && (event.key === 'Enter' || event.key === ' ')) {
-   event.preventDefault(); open(target.dataset.history, target);
-  }
- });
- return dialog;
+ const resume = () => { if (!disposed && !doc.hidden) load(true); };
+ doc.addEventListener('visibilitychange', resume);
+ reflectSelection();
+ load();
+ return { element: panel, destroy() {
+  disposed = true; controller?.abort(); controller = null;
+  clearTimeout(refreshTimer); doc.removeEventListener('visibilitychange', resume);
+  panel.remove();
+ } };
 }
-if (typeof document !== 'undefined') mountPriceHistory();
+if (typeof document !== 'undefined' && document.querySelector('#graphs-root')) mountPriceHistory();

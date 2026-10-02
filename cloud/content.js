@@ -1,7 +1,7 @@
 import MarkdownIt from 'markdown-it';
 const md = new MarkdownIt({ html: false, linkify: false, breaks: false });
 export const escape = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export const slugOK = value => typeof value === 'string' && /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value !== 'prac' && value !== 'practicehaven' && value.length <= 160 && !/^(api|editor|assets|signin-with-chatgpt|signout-with-chatgpt)(\/|$)/.test(value);
+export const slugOK = value => typeof value === 'string' && /^(?:[a-z0-9]+(?:-[a-z0-9]+)*\/)*[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value) && value !== 'prac' && value !== 'practicehaven' && value !== 'graphs' && value.length <= 160 && !/^(api|editor|assets|signin-with-chatgpt|signout-with-chatgpt)(\/|$)/.test(value);
 export function validDocument(doc) {
  if (!doc || typeof doc.title !== 'string' || doc.title.length > 2000 || !doc.title.trim() || typeof doc.markdown !== 'string' || doc.markdown.length > 250000 || !Array.isArray(doc.drawings) || doc.drawings.length > 250) return false;
  const ids = new Set(); let size = 0;

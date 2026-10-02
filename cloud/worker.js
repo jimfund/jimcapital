@@ -108,6 +108,17 @@ async function handle(request,env) {
   throw new HTTPError(405,'Method not allowed.');
  }
  if(request.method!=='GET'&&request.method!=='HEAD')return new Response('Method not allowed',{status:405});
+ if(path==='/graphs/'||path==='/graphs.html') {
+  const destination=new URL(request.url);destination.pathname='/graphs';
+  return Response.redirect(destination.toString(),308);
+ }
+ if(path==='/graphs') {
+  const asset=new URL(request.url);asset.pathname='/graphs.html';
+  const response=await env.ASSETS.fetch(new Request(asset,request));
+  // The asset service may canonicalize .html back to /graphs. Resolve the
+  // clean asset path directly without redirecting through this Worker again.
+  return response.status===308||response.status===301 ? env.ASSETS.fetch(request) : response;
+ }
  if(path==='/practicehaven'||path.startsWith('/practicehaven/')) {
   const destination=new URL(request.url);
   destination.pathname=path.replace(/^\/practicehaven(?=\/|$)/,'/prac');

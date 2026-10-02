@@ -78,11 +78,12 @@
     <link rel="stylesheet" href="layout.css">
     <link rel="stylesheet" href="market-clock.css">
     <link rel="stylesheet" href="price-history.css">
+    <link rel="stylesheet" href="softbank-chart.css">
   </head>
   <body>
     <div class="popout-tools">
       <button id="popout-button" type="button">↗ Pop out</button>
-      <button id="price-history-button" type="button" aria-haspopup="dialog">Price history</button>
+      <a id="price-history-button" href="/graphs">Graphs</a>
       <span id="popout-status" role="status"></span>
     </div>
     <main>
@@ -90,10 +91,10 @@
       <div class="frame">
         <img src="assets/angel-prayers.gif" width="268" height="414" alt="" loading="eager">
       </div>
-      <section class="monitor doodled-monitor" data-state="pending" data-history="SP500" role="button" tabindex="0" aria-haspopup="dialog" aria-label="S&P 500 · open price history">
+      <section class="monitor doodled-monitor" data-state="pending" data-history="SP500" role="link" tabindex="0" aria-label="S&P 500 · open graphs">
         <output class="doodle-number" id="spx-price">—</output>
       </section>
-      <section class="softbank-tracker" data-state="pending" data-history="SOFTBANK" role="button" tabindex="0" aria-haspopup="dialog" aria-label="SoftBank 9984 estimated price in yen · open price history">
+      <section class="softbank-tracker" aria-label="SoftBank 9984 · past 24 hours, estimated yen price">
         <output id="softbank-price">—</output>
       </section>
       <section class="market-clock" aria-label="San Francisco clock and regular stock market hours">
@@ -109,7 +110,7 @@
       <a class="one-word-link" href="https://one-word.jim.capital" aria-label="One Word">
         <img src="assets/one-word-pen-frames.png" width="850" height="85" alt="" draggable="false">
       </a>
-      <section class="ai-ticker" data-history="ANTHROPIC" role="button" aria-haspopup="dialog" aria-label="ANTH, OA and BTC · open price history" tabindex="0">
+      <section class="ai-ticker" data-history="ANTHROPIC" role="link" aria-label="ANTH, OA and BTC · open graphs" tabindex="0">
         <div class="ticker-track"><div class="ticker-copy">
         <div class="ai-quote anth-readout" data-history="ANTHROPIC" data-market="ANTHROPIC" aria-label="Anthropic">
           <span class="ai-symbol">ANTH</span><output>—</output>
@@ -126,7 +127,8 @@
     <script src="ai-ticker.js" type="module"></script>
     <script src="popout.js" defer></script>
     <script src="ticker.js" type="module"></script>
-    <script src="price-history.js" type="module"></script>
+    <script src="history-navigation.js" type="module"></script>
+    <script src="softbank-chart.js" type="module"></script>
     <script src="market-clock.js" type="module"></script>
     <script src="site.js" type="module"></script>
   </body>
