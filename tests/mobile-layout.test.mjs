@@ -10,7 +10,7 @@ const manifest = read('../assets/doodles.json');
 function actualLayers(width) {
   const sizes = { prediction: [105, 125], angel: [220, 32 + 188 * 414 / 268],
     clock: [300, 300], 'one-word': [85, 85], softbank: [300, 24],
-    'ai-ticker': [width, width * 941 / 1672 + 238] };
+    'ai-ticker': [width, width * 941 / 1672] };
   const drawings = { monitor: read('../assets/monitor-doodle.json'),
     ...Object.fromEntries(manifest.ids.map(id => [id, read(`../assets/doodles/${id}.json`)])) };
   return [...Object.keys(sizes), ...Object.keys(drawings)].map(id => {
@@ -42,7 +42,7 @@ test('the actual homepage artwork fits phone widths and stays readable without h
     assert.ok(24 * byId.monitor.scale >= 18, 'S&P price remains readable');
     assert.ok(24 * byId.softbank.scale >= 18, 'SoftBank price remains readable');
     assert.ok(85 * byId['one-word'].scale >= 44, 'pen link has a usable touch target');
-    assert.equal(byId['ai-ticker'].scale, 1, 'HTML price rows keep their CSS pixel sizes');
+    assert.equal(byId['ai-ticker'].scale, 1, 'the ship and its billboard share the available width');
     assert.deepEqual(layers, original, 'the saved desktop layout and artwork stay intact');
   }
 });

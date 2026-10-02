@@ -7,7 +7,7 @@ import { startAiTicker } from '../ai-ticker.js';
 
 test('the screen perspective keeps all four text-plane corners inside the billboard at different sizes', () => {
  const inputs = [[0, 0], [SCREEN_WIDTH, 0], [SCREEN_WIDTH, SCREEN_HEIGHT], [0, SCREEN_HEIGHT]];
- for (const scale of [1, 680 / 1672, 488 / 1672, .1]) {
+ for (const scale of [1, 680 / 1672, 560 / 1672, 488 / 1672, 398 / 1672, 358 / 1672, 288 / 1672, .1]) {
   const m = screenMatrix(scale);
   inputs.forEach(([x, y], i) => {
    const w = m[3] * x + m[7] * y + m[15];

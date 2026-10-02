@@ -87,7 +87,7 @@ export function mobileLayout(layers, width) {
   const penHeight = place('one-word', right + column - penWidth, smallY + 6, penWidth);
   let y = Math.max(angelHeight, smallY + Math.max(predictionHeight, penHeight + 6)) + gap;
 
-  // The ship's mobile readout uses normal HTML dimensions and full-size links.
+  // Size the ship and its integrated billboard together as one piece of artwork.
   if (items.has('ai-ticker')) y += place('ai-ticker', 0, y, available) + gap;
   if (items.has('monitor')) {
     const monitorWidth = Math.min(340, available);
