@@ -36,7 +36,7 @@ test('missing WebGL keeps the original ship and all three live price links usabl
  await createMobileFogRenderer(root);
  assert.equal(root.hasAttribute('data-marquee'), false); assert.equal(root.querySelector('canvas'), null);
  assert.equal(root.querySelector('.airship-display').outerHTML, content);
- assert.equal(root.querySelectorAll('a[href^="/graphs"]').length, 3);
+ assert.equal(root.querySelectorAll('.ai-quote[href^="https://"]').length, 3);
 });
 test('phones start lightweight fog and switching modes or motion preferences cancels the previous renderer', t => {
  const { dom, root } = setup(t);
@@ -46,7 +46,7 @@ test('phones start lightweight fog and switching modes or motion preferences can
  const start = mode => async (_root, { signal }) => { calls.push({ mode, signal }); };
  const stop = mountAirshipMarquee(root, { media, compact, start: start('desktop'), startMobile: start('mobile') });
  assert.equal(calls.length, 1); assert.equal(calls[0].mode, 'mobile');
- assert.equal(root.querySelectorAll('a[href^="/graphs"]').length, 3);
+ assert.equal(root.querySelectorAll('.ai-quote[href^="https://"]').length, 3);
  compact.matches = false; compact.dispatchEvent(new dom.window.Event('change'));
  assert.equal(calls.length, 2); assert.equal(calls[1].mode, 'desktop'); assert.equal(calls[0].signal.aborted, true);
  compact.matches = true; compact.dispatchEvent(new dom.window.Event('change'));

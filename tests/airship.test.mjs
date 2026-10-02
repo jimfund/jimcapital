@@ -16,7 +16,7 @@ test('the screen perspective keeps all four text-plane corners inside the billbo
   });
  }
 });
-test('all three live quotes fit separate rows, retain their own history links and report stale or unavailable feeds', () => {
+test('all three live quotes fit separate rows, retain their provider links and report stale or unavailable feeds', () => {
  const dom = new JSDOM(readFileSync(new URL('../index.html', import.meta.url), 'utf8'));
  const root = dom.window.document.querySelector('.market-airship');
  let render;
@@ -28,8 +28,9 @@ test('all three live quotes fit separate rows, retain their own history links an
  render(quotes);
  assert.equal(status(), 'LIVE PRICES');
  assert.equal(output('ANTHROPIC'), '$2.132T'); assert.equal(output('OPENAI'), '$1.820T'); assert.equal(output('BTC'), '$84,534.01');
+ const destinations = { ANTHROPIC: 'https://app.mnx.fi/trade/anthropic', OPENAI: 'https://app.mnx.fi/trade/openai', BTC: 'https://exchange.coinbase.com/trade/BTC-USD' };
  for (const link of root.querySelectorAll('.ai-quote')) {
-  assert.equal(link.tagName, 'A'); assert.equal(new URL(link.getAttribute('href'), 'https://jim.capital').searchParams.get('symbol'), link.dataset.market);
+  assert.equal(link.tagName, 'A'); assert.equal(link.getAttribute('href'), destinations[link.dataset.market]);
   assert.ok(link.getAttribute('aria-label').includes(link.querySelector('output').textContent));
  }
  render({ ...quotes, OPENAI: null }); assert.equal(status(), 'PARTIAL SIGNAL'); assert.equal(output('OPENAI'), '—'); assert.equal(output('BTC'), '$84,534.01');

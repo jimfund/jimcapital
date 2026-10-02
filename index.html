@@ -84,7 +84,6 @@
     <link rel="stylesheet" href="monitor.css">
     <link rel="stylesheet" href="layout.css">
     <link rel="stylesheet" href="market-clock.css">
-    <link rel="stylesheet" href="price-history.css">
     <link rel="stylesheet" href="softbank-chart.css">
     <link rel="stylesheet" href="airship.css">
   </head>
@@ -96,7 +95,7 @@
           <img src="assets/angel-prayers.gif" width="268" height="414" alt="" loading="eager" draggable="false">
         </div>
       </div>
-      <section class="monitor doodled-monitor" data-state="pending" data-history="SP500" role="link" tabindex="0" aria-label="S&P 500 · open graphs">
+      <section class="monitor doodled-monitor" data-state="pending" aria-label="S&P 500">
         <output class="doodle-number" id="spx-price">—</output>
       </section>
       <section class="softbank-tracker" aria-label="SoftBank 9984 · past 24 hours, estimated yen price">
@@ -119,13 +118,13 @@
         <img class="airship-artwork" src="assets/market-airship.png" width="1672" height="941" alt="" draggable="false">
         <div class="airship-display">
           <div class="airship-heading">MARKET SIGNAL</div>
-          <a class="ai-quote anth-readout" data-market="ANTHROPIC" href="/graphs?symbol=ANTHROPIC&amp;range=1d" aria-label="Anthropic valuation · open price history">
+          <a class="ai-quote anth-readout" data-market="ANTHROPIC" href="https://app.mnx.fi/trade/anthropic" aria-label="Anthropic valuation on MNX">
             <span class="airship-label"><span class="ai-symbol">ANTH</span><span class="airship-unit">VALUATION</span></span><output>—</output>
           </a>
-          <a class="ai-quote oa-readout" data-market="OPENAI" href="/graphs?symbol=OPENAI&amp;range=1d" aria-label="OpenAI valuation · open price history">
+          <a class="ai-quote oa-readout" data-market="OPENAI" href="https://app.mnx.fi/trade/openai" aria-label="OpenAI valuation on MNX">
             <span class="airship-label"><span class="ai-symbol">OA</span><span class="airship-unit">VALUATION</span></span><output>—</output>
           </a>
-          <a class="ai-quote btc-readout" data-market="BTC" href="/graphs?symbol=BTC&amp;range=1d" aria-label="Bitcoin price in US dollars · open price history">
+          <a class="ai-quote btc-readout" data-market="BTC" href="https://exchange.coinbase.com/trade/BTC-USD" aria-label="Bitcoin price in US dollars on Coinbase Exchange">
             <span class="airship-label"><span class="ai-symbol">BTC</span><span class="airship-unit">USD</span></span><output>—</output>
           </a>
           <div class="airship-status" role="status">CONNECTING</div>
@@ -137,7 +136,6 @@
     <script src="airship.js" type="module"></script>
     <script src="airship-marquee.js" type="module"></script>
     <script src="ticker.js" type="module"></script>
-    <script src="history-navigation.js" type="module"></script>
     <script src="softbank-chart.js" type="module"></script>
     <script src="market-clock.js" type="module"></script>
     <script src="site.js" type="module"></script>

@@ -74,7 +74,7 @@ test('wind retains its size in screen pixels as the ship is scaled', () => {
 });
 
 function setup(t) {
- const dom = new JSDOM('<section><canvas></canvas><a href="/graphs">Price history</a></section>', { pretendToBeVisual: true });
+ const dom = new JSDOM('<section><canvas></canvas><a href="https://app.mnx.fi/trade/anthropic">Anthropic on MNX</a></section>', { pretendToBeVisual: true });
  t.after(() => dom.window.close());
  const { window: view } = dom, doc = view.document, surface = doc.querySelector('canvas');
  let rect = { left: 120, top: 80, width: 640, height: 382 }, reads = 0, stamp = 0;
@@ -97,7 +97,7 @@ test('wind follows transformed bounds over price links without intercepting inpu
  assert.equal(wake.update(.1), true); assert.equal(reads(), 1);
  assert.ok(sample(wake, .5, .5)[0] > .01); assert.deepEqual(sample(wake, .5, .1), [0, 0, 0]);
  wake.update(.2); assert.equal(reads(), 1);
- assert.equal(doc.querySelector('a').getAttribute('href'), '/graphs');
+ assert.equal(doc.querySelector('a').getAttribute('href'), 'https://app.mnx.fi/trade/anthropic');
 });
 
 test('touch, pointer arrival, and reentry after leaving or a long pause do not invent wind', t => {

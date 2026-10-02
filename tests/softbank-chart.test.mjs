@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { softbankGeometry, nearestPoint, mountSoftbankChart, timeAgo } from '../softbank-chart.js';
-import { historyUrl } from '../history-navigation.js';
 
 const DAY = 86400000, STEP = 300000, NOW = Date.parse('2026-10-02T00:00:00Z');
 const sample = { symbol: 'SOFTBANK', to: NOW, step: STEP, stale: false, points: Array.from({ length: 289 }, (_, i) => ({ time: NOW - DAY + i * STEP, price: 6000 + i })) };
@@ -90,10 +89,9 @@ test('the server snapshot draws immediately and survives slow, empty and malform
  assert.equal(root.querySelector('.softbank-line').getAttribute('d'), path);
  assert.equal(price(), '6,385.83'); assert.equal(root.querySelector('.softbank-message').textContent, '');
 });
-test('editing the board cannot inspect or navigate from the TV; full graph links encode the market', async t => {
+test('editing the board cannot inspect the TV history', async t => {
  const { dom, doc, svg, price } = setup(t); await settle();
  doc.body.classList.add('editing');
  svg.dispatchEvent(new dom.window.MouseEvent('pointermove', { clientX: 100 }));
  assert.equal(price(), '6,385.83');
- assert.equal(historyUrl('SOFTBANK'), '/graphs?symbol=SOFTBANK&range=1d');
 });

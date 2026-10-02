@@ -27,8 +27,8 @@ export function startAiTicker(root, subscribe = subscribeQuotes) {
       const text = value ? formatPrice(value.price, quote.dataset.market === 'BTC' ? 'USD' : 'billion_usd') : '—';
       quote.querySelector('output').textContent = text;
       quoteState(quote, value);
-      const name = { ANTHROPIC: 'Anthropic valuation', OPENAI: 'OpenAI valuation', BTC: 'Bitcoin price in US dollars' }[quote.dataset.market];
-      quote.setAttribute('aria-label', `${name}: ${text}${value?.stale ? ', saved price' : ''}. Open price history.`);
+      const name = { ANTHROPIC: 'Anthropic valuation on MNX', OPENAI: 'OpenAI valuation on MNX', BTC: 'Bitcoin price in US dollars on Coinbase Exchange' }[quote.dataset.market];
+      quote.setAttribute('aria-label', `${name}: ${text}${value?.stale ? ', saved price' : ''}.`);
     }
     if (status) {
       const values = quotes.map(q => data[q.dataset.market]);
