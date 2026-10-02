@@ -1,0 +1,60 @@
+[data-history] { cursor: pointer; }
+[data-history]:focus-visible { outline: 2px dashed #444; outline-offset: 7px; }
+.editing [data-history] { cursor: move; }
+[data-state="stale"] { opacity: .5; }
+#price-history-button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fffffff5; color: #333; font: 13px system-ui, sans-serif; cursor: pointer; }
+#price-history-button:hover { background: #eee; }
+#price-history-button:focus-visible { outline: 2px solid #828c78; outline-offset: 3px; }
+body.history-open { overflow: hidden; }
+.price-history {
+ width: min(760px, calc(100vw - 24px)); max-height: calc(100svh - 32px);
+ margin: auto; padding: 24px; overflow: auto;
+ color: #292724; background: #fffef9; border: 1px solid #484138; border-radius: 4px;
+ box-shadow: 5px 6px 0 #302a2429; font: 14px/1.5 'Courier New', monospace;
+}
+.price-history::backdrop { background: #29221c65; }
+.price-history [hidden] { display: none !important; }
+.price-history button, .price-history select { font: inherit; color: inherit; }
+.price-history button { cursor: pointer; border: 1px solid #c9c3b8; border-radius: 3px; background: transparent; min-height: 36px; padding: 5px 12px; }
+.price-history button:hover { background: #f0ece2; }
+.price-history :focus-visible { outline: 2px solid #765228; outline-offset: 3px; }
+.history-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.history-heading h2 { margin: 0; font-size: 21px; font-weight: 600; }
+.price-history .history-close { border-color: transparent; font-size: 26px; padding: 0 8px; }
+.history-controls { display: flex; align-items: end; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin: 20px 0 22px; }
+.history-market { display: grid; gap: 4px; font-size: 12px; }
+.history-market select { max-width: 100%; border: 1px solid #c9c3b8; border-radius: 3px; padding: 8px; background: #fffef9; font-size: 14px; }
+.history-ranges { display: flex; gap: 4px; }
+.history-ranges [aria-pressed="true"] { background: #302a24; border-color: #302a24; color: #fffef9; }
+.history-readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px 16px; font-variant-numeric: tabular-nums; }
+.history-price { font-size: clamp(24px, 6vw, 32px); font-weight: 600; }
+.history-change { font-size: 12px; color: #356340; }
+.history-change[data-direction="down"] { color: #a23432; }
+.history-time { min-height: 21px; margin: 2px 0 14px; font-size: 12px; color: #655e54; }
+.history-plot { position: relative; margin-top: 16px; padding-top: 22px; }
+.history-plot svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.history-scale { display: flex; justify-content: space-between; gap: 12px; font-size: 11px; color: #655e54; }
+.history-high::before { content: 'High '; }
+.history-low::before { content: 'Low '; }
+.history-grid { stroke: #e6e1d7; stroke-width: 1; fill: none; }
+.history-line { stroke: #765228; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.history-dots { fill: #765228; }
+.history-cursor { stroke: #908878; stroke-width: 1; stroke-dasharray: 3 4; }
+.history-point { fill: #765228; stroke: #fffef9; stroke-width: 2; }
+.history-dates { display: flex; justify-content: space-between; gap: 20px; color: #655e54; font-size: 11px; }
+.history-dates span:last-child { text-align: right; }
+.history-help, .history-status, .history-source { font-size: 11px; color: #655e54; }
+.history-help { margin: 14px 0 0; }
+.history-feedback { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+.history-status { flex: 1; }
+.price-history .history-retry { flex: none; font-size: 12px; }
+.history-source { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #ded8cc; }
+.history-source:empty { display: none; }
+@media (max-width: 480px) {
+ .price-history { padding: 18px; }
+ .history-controls { gap: 12px; }
+ .history-market { width: 100%; }
+ .history-ranges { width: 100%; }
+ .history-ranges button { flex: 1; min-height: 40px; }
+ .history-readout { gap: 2px 10px; }
+}

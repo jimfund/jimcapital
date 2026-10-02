@@ -14,6 +14,16 @@ Generate schema migrations with `npm run db:generate`. Apply each new migration 
 
 Set `.dev.vars` locally (ignored): `PUBLISHING_SECRET`, `ONE_WORD_OWNER_ID=local_seedy`. Set the same secret in One Word, plus `JIM_CAPITAL_ORIGIN=http://127.0.0.1:8001`. The Sites Vite plugin supplies the simulated local identity after `/signin-with-chatgpt`.
 
+## Market prices and history
+
+The homepage fetches `/api/markets/quotes` from the Worker. D1 shares the upstream quote cache between visitors: XYZ refreshes at most every 5 seconds and MNX/Coinbase every 30 seconds while requested. Browsers pause polling when hidden. Saved quotes remain visible, dimmed and labelled with their timestamp, if a provider is unavailable.
+
+Click a price or **Price history** to open `/api/markets/history?symbol=BTC&range=1w`. Supported symbols are `SP500`, `SOFTBANK`, `ANTHROPIC`, `OPENAI`, and `BTC`; ranges are `1d`, `1w`, `1m`, and `1y`. The chart uses 5-minute, hourly, hourly, and daily candles respectively. Cache refresh intervals are 1, 5, and 30 minutes; candles are retained for 3, 40, and 400 days per interval. Wider views backfill missing periods; refreshes overlap the two latest candles. MNX only supports trailing windows, so its backfills can include previously saved periods. Persistent leases and a short failure backoff prevent duplicate upstream refreshes.
+
+History comes from provider candles on demand; no scheduled automation or separate Cloudflare account is required. No requests run when the site is unused. The available dates are shown explicitly when a provider has less history than the selected range. MNX charts use valuation mark prices, Coinbase uses BTC/USD spot closes, and XYZ charts use perpetual trade closes. The SoftBank chart estimates yen by multiplying matching SoftBank and USD/JPY closes; the live XYZ readouts use marks. Missing candles are not interpolated. Coinbase requires the identifying `User-Agent` header set by the Worker.
+
+Local market endpoints require migration `0002_groovy_masked_marvel.sql`. Market API, caching, failure, and chart interaction checks run with `npm test`; existing publishing checks also cover the shared D1 database.
+
 ## Hosting
 
 `.openai/hosting.json` identifies this Site and its managed D1 binding. Production runtime settings are stored in Sites: a shared secret and the exact authorized One Word site-scoped user ID. One Word additionally stores the target editor origin. Never copy the local simulated identity into production.

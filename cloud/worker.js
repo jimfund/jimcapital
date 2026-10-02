@@ -1,5 +1,6 @@
 import { fromPost, renderArticle, validDocument, slugOK, svg, renderDirectory } from './content.js';
 import seed from './seed.json' with { type: 'json' };
+import { marketResponse } from './markets.js';
 
 const json = (data, status=200) => Response.json(data, {status,headers:{'Cache-Control':'no-store, private','Vary':'Cookie','Referrer-Policy':'no-referrer'}});
 const html = (body,status=200,privatePage=false) => new Response(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':privatePage?'no-store, private':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});
@@ -23,6 +24,7 @@ async function requireOwner(request,db) {const id=userId(request);if(!id)throw n
 function result(row) {return {id:row.id,slug:row.slug,document:JSON.parse(row.draft),revision:row.revision,publishedAt:row.published_at,hasUnpublishedChanges:row.published!==row.draft};}
 async function handle(request,env) {
  const url=new URL(request.url),path=url.pathname;
+ if(path.startsWith('/api/markets/'))return marketResponse(request,env.DB);
  if(path==='/api/transfers'&&request.method==='POST') {
   if(!env.PUBLISHING_SECRET||request.headers.get('Authorization')!==`Bearer ${env.PUBLISHING_SECRET}`)throw new HTTPError(403,'Not authorized.');
   const data=await body(request);
