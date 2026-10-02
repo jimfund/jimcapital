@@ -28,7 +28,7 @@ export function constrain(item) {
 }
 export function defaultPosition(id, index) {
   if (id === 'prediction') return { x: 110, y: 205, width: 105, z: 1 };
-  if (id === 'angel') return { x: 340, y: 80, width: 316, z: 2 };
+  if (id === 'angel') return { x: 388, y: 150, width: 220, z: 2 };
   if (id === 'monitor') return { x: 755, y: 175, width: 400, z: 3 };
   if (id === 'softbank') return { x: 760, y: 800, width: 300, z: 4 };
   if (id === 'clock') return { x: 990, y: 15, width: 150, z: 5 };

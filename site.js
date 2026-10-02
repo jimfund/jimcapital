@@ -1,6 +1,7 @@
 import { drawStrokes, placeNumber, isDrawing } from './drawing.js';
 import { WORLD, isLayout, defaultPosition, validId, fitScene } from './layout-model.js';
 import { animatePenLink } from './pen-link.js';
+import { mountCanvasView } from './canvas-view.js';
 
 const main = document.querySelector('main');
 export const editing = new URLSearchParams(location.search).get('edit') === '1'
@@ -11,6 +12,7 @@ export const items = new Map();
 export let layout = { version: 1, items: {} };
 export let boardScale = 1;
 let placed = false;
+let canvasView;
 
 async function read(path, fallback) {
   try {
@@ -83,6 +85,10 @@ export function applyLayout(next = layout) {
   layout = next;
   placed = true;
   main.classList.add('layout-board');
+  if (canvasView) {
+    boardScale = canvasView.resize();
+    return;
+  }
   if (popout) {
     main.style.height = '100%';
     const rects = [...items].map(([id, item]) => {
@@ -119,7 +125,7 @@ async function init() {
   const monitor = document.querySelector('.monitor');
   if (isDrawing(monitorDrawing) && monitorDrawing.strokes.length) mountDrawing(monitor, monitorDrawing, document.querySelector('#spx-price'));
   addItem('prediction', main.querySelector('img'), 105);
-  addItem('angel', main.querySelector('.frame'), 316);
+  addItem('angel', main.querySelector('.frame'), 220);
   addItem('monitor', monitor, 400, true);
   addItem('softbank', main.querySelector('.softbank-tracker'), 300);
   addItem('clock', main.querySelector('.market-clock'), 300);
@@ -141,11 +147,12 @@ async function init() {
     if (validId(id)) extraIndex++;
     layout.items[id] = isLayout(saved) && saved.items[id] ? saved.items[id] : fallback;
   }
-  if (popout || editing || (isLayout(saved) && Object.keys(saved.items).length)) applyLayout();
+  if (!popout && !editing) canvasView = mountCanvasView(main, items, () => layout);
+  applyLayout();
   const layoutObserver = new ResizeObserver(() => { if (placed) applyLayout(); });
   layoutObserver.observe(main);
   // Refit after images, drawings, or fonts finish sizing as well as window resizes.
-  if (popout) for (const item of items.values()) layoutObserver.observe(item.element);
+  if (popout || canvasView) for (const item of items.values()) layoutObserver.observe(item.element);
   if (['localhost', '127.0.0.1'].includes(location.hostname) && !editing && !new URLSearchParams(location.search).has('popout') && window.self === window.top) {
     const link = document.createElement('a');
     link.className = 'edit-entry';
