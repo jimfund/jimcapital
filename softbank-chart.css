@@ -1,7 +1,7 @@
-.softbank-tracker { position: relative; --chart-ink: #444; }
+.softbank-tracker { position: relative; --chart-ink: #444; pointer-events: none; }
 .softbank-tracker[data-direction="up"] { --chart-ink: #218348; }
 .softbank-tracker[data-direction="down"] { --chart-ink: #c03631; }
-.softbank-plot { display: block; width: 100%; height: 100px; overflow: hidden; cursor: crosshair; touch-action: pan-y; }
+.softbank-plot { position: absolute; z-index: 0; left: -15px; top: -73px; display: block; width: 151px; height: auto; aspect-ratio: 300 / 220; overflow: hidden; cursor: crosshair; touch-action: pan-y; pointer-events: auto; }
 .softbank-plot [hidden] { display: none; }
 .softbank-plot:focus-visible { outline: 2px dotted #777; outline-offset: 2px; }
 .softbank-line { fill: none; stroke: var(--chart-ink); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
@@ -10,7 +10,12 @@
 .softbank-point { fill: var(--chart-ink); stroke: #fff; stroke-width: 2; }
 .softbank-message { fill: #666; font: 18px 'Courier New', monospace; }
 .softbank-plot[data-stale="true"] .softbank-line { opacity: .5; }
-.softbank-tracker #softbank-price { font-size: 24px; line-height: 1.2; text-align: center; }
-.softbank-time { display: block; text-align: center; white-space: nowrap; font: 16px/1.2 'Courier New', monospace; color: #555; }
+.softbank-tracker #softbank-price { position: relative; z-index: 1; font-size: 24px; line-height: 1; text-align: left; }
+.softbank-time { position: absolute; z-index: 1; left: -15px; top: 26px; width: 151px; display: block; text-align: center; white-space: nowrap; font: 11px/1.2 'Courier New', monospace; color: #555; }
 .softbank-description { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .editing .softbank-plot { pointer-events: none; }
+.editing .softbank-tracker { pointer-events: auto; }
+/* Keep the original TV frame and 9984 ink above the graph while allowing
+   inspection through the drawings' transparent canvas area. */
+body:not(.editing) .site-item[data-item="10d61a37-3bd9-42c1-b303-6ab3f92251db"],
+body:not(.editing) .site-item[data-item="beba7e25-b7b3-4fef-a49d-6f97b4f3a852"] { pointer-events: none; }

@@ -8,9 +8,9 @@ export function softbankGeometry(history) {
  const points = history.points.filter(p => p.time >= from && p.time <= history.to && Number.isFinite(p.price));
  if (!points.length) return null;
  const prices = points.map(p => p.price), low = Math.min(...prices), high = Math.max(...prices);
- const padding = (high - low || Math.abs(high) * .01 || 1) * .12;
+ const padding = (high - low || Math.abs(high) * .01 || 1) * .025;
  const x = time => 5 + (time - from) / DAY * 290;
- const y = price => 8 + (high + padding - price) / (high - low + padding * 2) * 82;
+ const y = price => 6 + (high + padding - price) / (high - low + padding * 2) * 208;
  const path = points.map((p, i) => `${!i || p.time - points[i - 1].time > history.step * 1.5 ? 'M' : 'L'}${x(p.time).toFixed(2)},${y(p.price).toFixed(2)}`).join(' ');
  const first = points[0].price, last = points.at(-1).price;
  return { points, x, y, path, direction: last > first ? 'up' : last < first ? 'down' : 'flat', change: first > 0 ? (last / first - 1) * 100 : null };
@@ -25,7 +25,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
  const output = root.querySelector('#softbank-price');
  const svg = doc.createElementNS(NS, 'svg');
  svg.classList.add('softbank-plot');
- svg.setAttribute('viewBox', '0 0 300 100');
+ svg.setAttribute('viewBox', '0 0 300 220');
  svg.setAttribute('tabindex', '0');
  svg.setAttribute('role', 'slider');
  svg.setAttribute('aria-label', chartLabel);
@@ -35,8 +35,8 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
  svg.setAttribute('aria-valuemin', '0'); svg.setAttribute('aria-valuemax', '0'); svg.setAttribute('aria-valuenow', '0');
  svg.innerHTML = `<defs><filter id="softbank-pen" x="-5%" y="-10%" width="110%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".065" numOctaves="2" seed="8" result="grain"/><feDisplacementMap in="SourceGraphic" in2="grain" scale=".65" xChannelSelector="R" yChannelSelector="G"/></filter></defs>
   <path class="softbank-line" filter="url(#softbank-pen)"/><g class="softbank-dots"></g>
-  <line class="softbank-cursor" y1="4" y2="96" hidden/><circle class="softbank-point" r="4.5" hidden/>
-  <text class="softbank-message" x="150" y="53" text-anchor="middle">Loading…</text>`;
+  <line class="softbank-cursor" y1="4" y2="216" hidden/><circle class="softbank-point" r="4.5" hidden/>
+  <text class="softbank-message" x="150" y="110" text-anchor="middle">Loading…</text>`;
  root.prepend(svg);
  const time = doc.createElement('time'); time.className = 'softbank-time'; root.append(time);
  const description = doc.createElement('span');
