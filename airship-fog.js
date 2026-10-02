@@ -138,7 +138,7 @@ export function fogLightUniforms(time = 0, buffers) {
  }
  return result;
 }
-export async function createFogRenderer(root, { signal } = {}) {
+export async function createFogRenderer(root, { signal, maxWidth = 640 } = {}) {
  const doc = root.ownerDocument, view = doc.defaultView;
  const artwork = root.querySelector('.airship-artwork'); await artwork.decode();
  if (signal?.aborted) return;
@@ -155,7 +155,7 @@ export async function createFogRenderer(root, { signal } = {}) {
   if (buffer) gl.deleteBuffer(buffer);
   if (program) gl.deleteProgram(program);
  }
- // Share the marquee's clock: background tabs and reduced motion stop both.
+ // The caller pauses this clock in background tabs and outside the viewport.
  function render(time = elapsed) {
   if (disposed) return;
   elapsed = time;
@@ -199,9 +199,9 @@ export async function createFogRenderer(root, { signal } = {}) {
   gl.uniform3fv(uniforms['colours[0]'], lights.colours);
   const resize = () => {
    if (disposed) return;
-   // Diffuse fog needs fewer pixels than the artwork beneath it. Keep the
-   // 30fps movement, with a smaller surface and 16 samples through its volume.
-   const width = Math.max(1, Math.min(640, Math.round(root.clientWidth * .6)));
+   // Diffuse fog needs fewer pixels than the artwork beneath it. Phones use
+   // a smaller cap while retaining all 16 samples through the volume.
+   const width = Math.max(1, Math.min(maxWidth, Math.round(root.clientWidth * .6)));
    const height = Math.max(1, Math.round(width * artwork.naturalHeight / artwork.naturalWidth * 1.4 / 1.32));
    if (surface.width === width && surface.height === height) return;
    surface.width = width; surface.height = height; dirty = true;

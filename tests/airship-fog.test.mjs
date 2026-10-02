@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 import { readFileSync } from 'node:fs';
 import { createFogRenderer, fogLightUniforms } from '../airship-fog.js';
-import { createMarqueeRenderer } from '../airship-marquee.js';
+import { createMarqueeRenderer, createMobileFogRenderer } from '../airship-marquee.js';
 
 function setup(t, { compile = true, smallArtwork = false } = {}) {
  const dom = new JSDOM(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), { pretendToBeVisual: true });
@@ -12,7 +12,7 @@ function setup(t, { compile = true, smallArtwork = false } = {}) {
  artwork.decode = async () => {};
  Object.defineProperties(artwork, { naturalWidth: { value: smallArtwork ? 2 : 1672 }, naturalHeight: { value: smallArtwork ? 2 : 941 } });
  Object.defineProperty(root, 'clientWidth', { value: 1120, configurable: true });
- const state = { uniforms: {}, draws: 0, deleted: [], observers: [], frames: new Map(), wakeUploads: [] };
+ const state = { uniforms: {}, draws: 0, deleted: [], observers: [], frames: new Map(), wakeUploads: [], contexts: [] };
  let frameId = 0;
  view.requestAnimationFrame = fn => { state.frames.set(++frameId, fn); return frameId; };
  view.cancelAnimationFrame = id => state.frames.delete(id);
@@ -39,7 +39,7 @@ function setup(t, { compile = true, smallArtwork = false } = {}) {
   return () => ({});
  } });
  const context2d = { drawImage() {}, putImageData() {}, getImageData: (_x, _y, w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }), createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4) }) };
- t.mock.method(view.HTMLCanvasElement.prototype, 'getContext', kind => kind === '2d' ? context2d : gl);
+ t.mock.method(view.HTMLCanvasElement.prototype, 'getContext', kind => { state.contexts.push(kind); return kind === '2d' ? context2d : gl; });
  const step = time => { const frames = [...state.frames.values()]; state.frames.clear(); frames.forEach(fn => fn(time)); };
  return { dom, view, root, artwork, state, step };
 }
@@ -64,6 +64,66 @@ test('fog reuses lamp buffers while keeping changing intensities and fixed lamp 
  assert.equal(result, lights); assert.equal(result.positions, positions); assert.equal(result.colours, colours);
  assert.deepEqual(result, fogLightUniforms(3)); assert.notDeepEqual(Array.from(positions), initial);
  for (let i = 0; i < positions.length; i++) if (i % 4 !== 3) assert.equal(positions[i], initial[i]);
+});
+
+test('mobile fog uses one small graphics surface at 20fps with the approved appearance and live links intact', async t => {
+ const { root, view, state, step } = setup(t), display = root.querySelector('.airship-display').outerHTML;
+ Object.defineProperty(root, 'clientWidth', { value: 390, configurable: true });
+ Object.defineProperty(view, 'devicePixelRatio', { value: 3 });
+ const renderer = await createMobileFogRenderer(root); t.after(() => renderer.destroy());
+ const surface = root.querySelector('.airship-fog');
+ assert.equal(surface.width, 234); assert.equal(surface.height, 140);
+ assert.deepEqual(state.contexts, ['webgl']); assert.equal(root.querySelector('.airship-lights'), null);
+ assert.equal(root.hasAttribute('data-marquee'), false);
+ assert.equal(state.uniforms.u_density, 1); assert.equal(state.uniforms.u_scatter, 2.5);
+ assert.equal(root.querySelector('.airship-display').outerHTML, display);
+ const initial = state.draws;
+ for (const time of [0, 10, 20, 30, 40, 49]) step(time);
+ assert.equal(state.draws, initial);
+ step(50); assert.equal(state.draws, initial + 1);
+ step(70); step(99); assert.equal(state.draws, initial + 1);
+ step(100); assert.equal(state.draws, initial + 2); assert.ok(Math.abs(state.uniforms.u_time - .07) < 1e-8);
+ Object.defineProperty(root, 'clientWidth', { value: 680 }); state.observers[0].callback();
+ assert.equal(surface.width, 320); assert.equal(surface.height, 191);
+});
+
+test('mobile fog pauses in hidden tabs and offscreen, resumes without jumping, and stops after context loss', async t => {
+ const { root, view, state, step } = setup(t); let notify, observed, disconnected = false;
+ view.IntersectionObserver = class {
+  constructor(callback) { notify = callback; }
+  observe(element) { observed = element; }
+  disconnect() { disconnected = true; }
+ };
+ const renderer = await createMobileFogRenderer(root); t.after(() => renderer.destroy());
+ const surface = root.querySelector('.airship-fog'); assert.equal(observed, surface);
+ step(0); step(100); const firstTime = state.uniforms.u_time;
+ Object.defineProperty(view.document, 'hidden', { value: true, configurable: true });
+ view.document.dispatchEvent(new view.Event('visibilitychange')); step(10000);
+ assert.equal(state.frames.size, 0); assert.equal(state.uniforms.u_time, firstTime);
+ Object.defineProperty(view.document, 'hidden', { value: false, configurable: true });
+ view.document.dispatchEvent(new view.Event('visibilitychange')); step(10100);
+ assert.equal(state.uniforms.u_time, firstTime);
+ step(10200); assert.ok(state.uniforms.u_time > firstTime);
+ const draws = state.draws, beforeOffscreen = state.uniforms.u_time;
+ notify([{ target: surface, isIntersecting: false }]); step(20000);
+ view.document.dispatchEvent(new view.Event('visibilitychange'));
+ assert.equal(state.frames.size, 0); assert.equal(state.draws, draws);
+ notify([{ target: surface, isIntersecting: true }]); step(20100);
+ assert.equal(state.uniforms.u_time, beforeOffscreen);
+ step(20200); assert.ok(state.draws > draws);
+ surface.dispatchEvent(new view.Event('webglcontextlost', { cancelable: true }));
+ assert.equal(state.frames.size, 0); assert.equal(disconnected, true); assert.equal(state.deleted.length, 7);
+ assert.equal(root.querySelector('canvas'), null); assert.equal(root.querySelectorAll('.ai-quote').length, 3);
+ renderer.destroy(); assert.equal(state.deleted.length, 7);
+});
+
+test('aborting a pending mobile fog initialization releases its renderer before animation starts', async t => {
+ const { root, view, state } = setup(t); let finish, destroyed = 0;
+ const controller = new AbortController();
+ const pending = createMobileFogRenderer(root, { signal: controller.signal, startFog: () => new Promise(resolve => { finish = resolve; }) });
+ controller.abort();
+ finish({ surface: view.document.createElement('canvas'), render() { throw new Error('Must not render'); }, destroy() { destroyed++; } });
+ assert.equal(await pending, undefined); assert.equal(destroyed, 1); assert.equal(state.frames.size, 0);
 });
 
 test('repeated frames and unchanged resize notifications do not redraw or reset the fog', async t => {

@@ -157,14 +157,57 @@ export async function createMarqueeRenderer(root, { signal, startFog = createFog
  } catch (error) { destroy(); throw error; }
  return { destroy };
 }
-export function mountAirshipMarquee(root, { media = root.ownerDocument.defaultView.matchMedia('(prefers-reduced-motion: reduce)'), compact = root.ownerDocument.defaultView.matchMedia?.(MOBILE_QUERY), start = createMarqueeRenderer } = {}) {
+// Phones keep the original ship artwork beneath a single, smaller fog canvas.
+// This avoids allocating the full-resolution marquee masks and a second GL
+// context while retaining the same moving volume and scattered light.
+export async function createMobileFogRenderer(root, { signal, startFog = createFogRenderer } = {}) {
+ if (signal?.aborted) return;
+ const fog = await startFog(root, { signal, maxWidth: 320 });
+ if (!fog) return;
+ if (signal?.aborted) { fog.destroy(); return; }
+ const doc = root.ownerDocument, view = doc.defaultView;
+ let frame, observer, last, lastDraw = -Infinity, elapsed = 0, inView = true, disposed = false;
+ function destroy() {
+  if (disposed) return;
+  disposed = true; view.cancelAnimationFrame(frame); observer?.disconnect();
+  doc.removeEventListener('visibilitychange', restart); signal?.removeEventListener('abort', destroy);
+  fog.surface.removeEventListener('webglcontextlost', destroy); fog.destroy();
+ }
+ function restart() {
+  view.cancelAnimationFrame(frame); last = undefined;
+  if (inView && !doc.hidden && !disposed) frame = view.requestAnimationFrame(tick);
+ }
+ function tick(now) {
+  if (disposed || doc.hidden || !inView) return;
+  if (!root.contains(fog.surface)) { destroy(); return; }
+  if (last !== undefined) elapsed += Math.min((now - last) / 1000, .1);
+  last = now;
+  if (now - lastDraw >= 50) { fog.render(elapsed); lastDraw = now; }
+  frame = view.requestAnimationFrame(tick);
+ }
+ if (view.IntersectionObserver) {
+  observer = new view.IntersectionObserver(entries => {
+   if (disposed) return;
+   let entry;
+   for (const candidate of entries) if (candidate.target === fog.surface) entry = candidate;
+   if (!entry || entry.isIntersecting === inView) return;
+   inView = entry.isIntersecting; restart();
+  }, { rootMargin: '200px' });
+  observer.observe(fog.surface);
+ }
+ fog.surface.addEventListener('webglcontextlost', destroy, { once: true });
+ doc.addEventListener('visibilitychange', restart); signal?.addEventListener('abort', destroy, { once: true }); restart();
+ return { destroy };
+}
+export function mountAirshipMarquee(root, { media = root.ownerDocument.defaultView.matchMedia('(prefers-reduced-motion: reduce)'), compact = root.ownerDocument.defaultView.matchMedia?.(MOBILE_QUERY), start = createMarqueeRenderer, startMobile = createMobileFogRenderer } = {}) {
  let controller;
  const update = () => {
   controller?.abort(); controller = undefined;
-  if (media.matches || compact?.matches) return;
+  if (media.matches) return;
   controller = new AbortController();
   // Graphics failures leave the original artwork and live links in place.
-  start(root, { signal: controller.signal }).catch(() => {});
+  const render = compact?.matches ? startMobile : start;
+  render(root, { signal: controller.signal }).catch(() => {});
  };
  media.addEventListener('change', update); compact?.addEventListener('change', update); update();
  return () => { controller?.abort(); media.removeEventListener('change', update); compact?.removeEventListener('change', update); };
