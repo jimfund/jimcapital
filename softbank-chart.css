@@ -6,6 +6,8 @@
 .softbank-plot:focus-visible { outline: 2px dotted #777; outline-offset: 2px; }
 .softbank-line { fill: none; stroke: var(--chart-ink); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
 .softbank-dots { fill: var(--chart-ink); }
+.softbank-tracker[data-direction="down"] .softbank-line,
+.softbank-tracker[data-direction="down"] .softbank-dots { opacity: .7; }
 .softbank-cursor { stroke: #777; stroke-width: 1; stroke-dasharray: 2 5; }
 .softbank-point { fill: var(--chart-ink); stroke: #fff; stroke-width: 2; }
 .softbank-message { fill: #666; font: 18px 'Courier New', monospace; }
