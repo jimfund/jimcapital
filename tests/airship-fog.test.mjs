@@ -135,6 +135,7 @@ test('moving the ship offscreen pauses both renderers and returning resumes with
   disconnect() { disconnected = true; }
  };
  const fogSurface = view.document.createElement('canvas');
+ root.append(fogSurface);
  const times = [], renderer = await createMarqueeRenderer(root, { startFog: async () => ({ surface: fogSurface, render: time => times.push(time), destroy() {} }) });
  t.after(() => renderer.destroy());
  assert.equal(observed, fogSurface); step(100); step(200);
@@ -146,5 +147,8 @@ test('moving the ship offscreen pauses both renderers and returning resumes with
  view.document.dispatchEvent(new view.Event('visibilitychange')); assert.equal(state.frames.size, 0);
  notify([{ target: fogSurface, isIntersecting: true }]); step(10300); assert.equal(times.at(-1), .1);
  step(10400); assert.equal(times.at(-1), .2);
+ fogSurface.remove(); notify([{ target: fogSurface, isIntersecting: false }]);
+ assert.equal(observed, root);
+ const beforeFallback = state.draws; step(10500); assert.ok(state.draws > beforeFallback);
  renderer.destroy(); assert.equal(disconnected, true); assert.equal(state.frames.size, 0);
 });

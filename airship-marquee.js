@@ -129,8 +129,15 @@ export async function createMarqueeRenderer(root, { signal, startFog = createFog
   observer = new view.ResizeObserver(resize); observer.observe(root); resize();
   if (view.IntersectionObserver) {
    visibilityObserver = new view.IntersectionObserver(entries => {
-    const entry = entries[entries.length - 1];
-    if (!entry || entry.target !== visibilityTarget || entry.isIntersecting === inView) return;
+    if (disposed) return;
+    // A lost fog context removes its canvas; keep the visible marquee running.
+    if (visibilityTarget !== root && !root.contains(visibilityTarget)) {
+     visibilityObserver.unobserve(visibilityTarget); visibilityTarget = root; visibilityObserver.observe(root);
+     fog?.destroy(); fog = undefined; inView = true; restart(); return;
+    }
+    let entry;
+    for (const candidate of entries) if (candidate.target === visibilityTarget) entry = candidate;
+    if (!entry || entry.isIntersecting === inView) return;
     inView = entry.isIntersecting; restart();
    }, { rootMargin: '200px' }); // Include the fog extending beyond the hull.
    visibilityObserver.observe(root);
