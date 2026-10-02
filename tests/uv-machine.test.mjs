@@ -32,7 +32,7 @@ test('missing, malformed and stale data cannot appear as low UV', () => {
 
 test('the warning starts at exactly 3 and unknown removes the reading and needle', () => {
   const root = fixture();
-  for (const [value, state, message] of [[0, 'low', 'BELOW YOUR LIMIT'], [2.9, 'low', 'BELOW YOUR LIMIT'], [3, 'warning', 'DON’T GO OUTSIDE'], [11, 'warning', 'DON’T GO OUTSIDE'], [null, 'unknown', 'UNKNOWN']]) {
+  for (const [value, state, message] of [[0, 'low', 'BELOW LIMIT'], [2.9, 'low', 'BELOW LIMIT'], [3, 'warning', 'DON’T GO OUTSIDE'], [11, 'warning', 'DON’T GO OUTSIDE'], [null, 'unknown', 'UNKNOWN']]) {
     renderUV(root, value, now);
     assert.equal(root.dataset.state, state);
     assert.equal(root.querySelector('.uv-status').textContent, message);

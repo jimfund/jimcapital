@@ -37,7 +37,7 @@ export function renderUV(root, value, now = Date.now()) {
   const known = value !== null;
   root.dataset.state = known ? value >= 3 ? 'warning' : 'low' : 'unknown';
   root.querySelector('.uv-value').textContent = known ? String(value) : '—';
-  root.querySelector('.uv-status').textContent = known ? value >= 3 ? 'DON’T GO OUTSIDE' : 'BELOW YOUR LIMIT' : 'UNKNOWN';
+  root.querySelector('.uv-status').textContent = known ? value >= 3 ? 'DON’T GO OUTSIDE' : 'BELOW LIMIT' : 'UNKNOWN';
   root.querySelector('.uv-time').textContent = known ? `Forecast · ${hourLabel.format(now)}` : 'No current hourly forecast. Check EPA before going out.';
   const needle = root.querySelector('.uv-needle');
   needle.hidden = !known;
