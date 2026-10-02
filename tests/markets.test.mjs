@@ -140,6 +140,19 @@ test('persistent leases exclude another Worker and expire after an interrupted r
  assert.equal(await claimRefresh(db, 'shared', NOW + 1000), null);
  assert.ok(await claimRefresh(db, 'shared', NOW + 30001));
 });
+test('brief provider rate limits retry within the request; longer limits fail into the cache backoff', async () => {
+ const p = provider(); let attempts = 0;
+ const data = await fetchCandles('coinbase:BTC-USD', RANGES['1w'], NOW - DAY, NOW, (url, options) => {
+  attempts++;
+  return attempts === 1 ? new Response('Busy', { status: 429, headers: { 'Retry-After': '0' } }) : p.fetcher(url, options);
+ });
+ assert.equal(attempts, 2); assert.equal(data.length, 24);
+ attempts = 0;
+ await assert.rejects(fetchCandles('coinbase:BTC-USD', RANGES['1w'], NOW - DAY, NOW, () => {
+  attempts++; return new Response('Busy', { status: 429, headers: { 'Retry-After': '30' } });
+ }));
+ assert.equal(attempts, 1);
+});
 test('public market routes reject unknown symbols, ranges and methods before touching providers', async () => {
  for (const query of ['symbol=__proto__', 'symbol=BTC&range=all', 'symbol=BTC%27%3BDELETE', '']) {
   const r = await marketResponse(new Request('https://example.com/api/markets/history?' + query), database()); assert.equal(r.status, 400);

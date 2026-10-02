@@ -25,11 +25,26 @@ function timestamp(value, now) {
  return time;
 }
 async function json(url, options, fetcher) {
- const response = await fetcher(url, { ...options, signal: AbortSignal.timeout(7000), headers: {
-  ...options?.headers, Accept: 'application/json', 'User-Agent': 'jim.capital/1.0 (+https://jim.capital)',
- } });
- if (!response.ok) throw new Error(`Price provider returned ${response.status}: ${(await response.text()).slice(0, 160)}`);
- return response.json();
+ const signal = AbortSignal.timeout(7000);
+ for (let attempt = 0; ; attempt++) {
+  const response = await fetcher(url, { ...options, signal, headers: {
+   ...options?.headers, Accept: 'application/json', 'User-Agent': 'jim.capital/1.0 (+https://jim.capital)',
+  } });
+  if (response.status === 429 && attempt < 2) {
+   const retryAfter = response.headers.get('Retry-After');
+   const delay = retryAfter ? (Number.isFinite(Number(retryAfter)) ? Number(retryAfter) * 1000 : Date.parse(retryAfter) - Date.now()) : 750 * (attempt + 1);
+   // Shared server egress can briefly hit provider rate limits. Keep all
+   // attempts inside one deadline; longer limits fall back to saved data.
+   if (Number.isFinite(delay) && delay >= 0 && delay <= 2000) {
+    await response.body?.cancel();
+    await new Promise(resolve => setTimeout(resolve, delay + Math.random() * 100));
+    signal.throwIfAborted();
+    continue;
+   }
+  }
+  if (!response.ok) throw new Error(`Price provider returned ${response.status}: ${(await response.text()).slice(0, 160)}`);
+  return response.json();
+ }
 }
 export const QUOTE_GROUPS = [
  { key: 'xyz', ttl: 5000, symbols: ['SP500', 'SOFTBANK'] },
