@@ -28,7 +28,7 @@ test('all three live quotes fit separate rows, retain their provider links and r
  render(quotes);
  assert.equal(status(), 'LIVE PRICES');
  assert.equal(output('ANTHROPIC'), '$2.132T'); assert.equal(output('OPENAI'), '$1.820T'); assert.equal(output('BTC'), '$84,534.01');
- const destinations = { ANTHROPIC: 'https://app.mnx.fi/trade/anthropic', OPENAI: 'https://app.mnx.fi/trade/openai', BTC: 'https://exchange.coinbase.com/trade/BTC-USD' };
+ const destinations = { ANTHROPIC: 'https://mnx.fi/trade/anthropic', OPENAI: 'https://mnx.fi/trade/openai', BTC: 'https://exchange.coinbase.com/trade/BTC-USD' };
  for (const link of root.querySelectorAll('.ai-quote')) {
   assert.equal(link.tagName, 'A'); assert.equal(link.getAttribute('href'), destinations[link.dataset.market]);
   assert.ok(link.getAttribute('aria-label').includes(link.querySelector('output').textContent));
