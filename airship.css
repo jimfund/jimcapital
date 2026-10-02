@@ -18,7 +18,6 @@
 .market-airship .btc-readout output { font-size: 46px; letter-spacing: -2px; }
 .market-airship .ai-quote:hover { color: #d0ffff; }
 .market-airship .ai-quote:focus-visible { outline: 2px solid #9cebf0; outline-offset: 5px; }
-.market-airship .ai-quote[data-state="offline"] output { color: #77949e; text-shadow: none; }
 .airship-status { padding-top: 10px; color: #b1cabc; text-align: center; font-size: 15px; letter-spacing: 3px; }
 .editing .market-airship { pointer-events: auto; }
 .editing .airship-display { pointer-events: none; }
