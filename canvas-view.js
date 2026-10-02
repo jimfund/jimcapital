@@ -22,6 +22,10 @@ export function mountCanvasView(main, items, getLayout) {
   const preference = win.matchMedia('(prefers-reduced-motion: reduce)');
   const camera = { x: 0, y: 0 };
   const target = { x: 0, y: 0 };
+  const angel = items.get('angel');
+  const angelWindow = angel?.element.querySelector('.angel-window');
+  const angelImage = angelWindow?.querySelector('img');
+  let imageScale = 1, imageTravel = { x: 0, y: 0 };
   let geometry, layers = [], bounds, frame = 0, lastTime = 0, drag;
 
   doc.body.classList.add('canvas-mode');
@@ -30,13 +34,18 @@ export function mountCanvasView(main, items, getLayout) {
   main.setAttribute('aria-label', 'Explore the jim.capital canvas');
   main.setAttribute('aria-keyshortcuts', 'ArrowUp ArrowDown ArrowLeft ArrowRight Home');
 
-  // The angel is the only background plane; every other object moves together.
-  const depth = id => id === 'angel' && !preference.matches ? .68 : 1;
+  // The gold frame shares the foreground camera. Only its clipped image has depth.
   function render() {
     for (const layer of layers) {
-      const { element, x, y, zoom, id } = layer;
-      const speed = depth(id);
-      element.style.transform = `translate3d(${geometry.x + x * geometry.scale + camera.x * speed}px, ${geometry.y + y * geometry.scale + camera.y * speed}px, 0) scale(${zoom * geometry.scale})`;
+      const { element, x, y, zoom } = layer;
+      element.style.transform = `translate3d(${geometry.x + x * geometry.scale + camera.x}px, ${geometry.y + y * geometry.scale + camera.y}px, 0) scale(${zoom * geometry.scale})`;
+    }
+    if (angelImage) {
+      const drift = preference.matches ? 0 : -.08 / imageScale;
+      const x = clamp(camera.x * drift, -imageTravel.x, imageTravel.x);
+      const y = clamp(camera.y * drift, -imageTravel.y, imageTravel.y);
+      // A little extra image area keeps every edge covered as it moves behind the frame.
+      angelImage.style.transform = `translate3d(${x}px, ${y}px, 0) scale(1.18)`;
     }
   }
 
@@ -65,18 +74,22 @@ export function mountCanvasView(main, items, getLayout) {
     layers = [...items].map(([id, item]) => {
       const position = layout.items[id];
       const zoom = position.width / item.nativeWidth;
-      item.element.style.zIndex = id === 'angel' ? 0 : Math.max(1, position.z);
+      item.element.style.zIndex = position.z;
       return { ...position, id, element: item.element, zoom, height: item.element.offsetHeight * zoom };
     });
     const width = main.clientWidth, height = main.clientHeight;
     geometry = canvasGeometry(layers, width, height);
+    if (angelImage) {
+      imageScale = geometry.scale * layout.items.angel.width / angel.nativeWidth;
+      imageTravel = { x: angelWindow.clientWidth * .08, y: angelWindow.clientHeight * .08 };
+    }
     // Keep an edge of the scene reachable, even after a long trackpad fling.
     const gutter = Math.min(80, width / 4, height / 4);
     bounds = {
-      minX: Math.min(0, ...layers.map(p => (gutter - geometry.x - (p.x + p.width) * geometry.scale) / depth(p.id))),
-      maxX: Math.max(0, ...layers.map(p => (width - gutter - geometry.x - p.x * geometry.scale) / depth(p.id))),
-      minY: Math.min(0, ...layers.map(p => (gutter - geometry.y - (p.y + p.height) * geometry.scale) / depth(p.id))),
-      maxY: Math.max(0, ...layers.map(p => (height - gutter - geometry.y - p.y * geometry.scale) / depth(p.id))),
+      minX: Math.min(0, ...layers.map(p => gutter - geometry.x - (p.x + p.width) * geometry.scale)),
+      maxX: Math.max(0, ...layers.map(p => width - gutter - geometry.x - p.x * geometry.scale)),
+      minY: Math.min(0, ...layers.map(p => gutter - geometry.y - (p.y + p.height) * geometry.scale)),
+      maxY: Math.max(0, ...layers.map(p => height - gutter - geometry.y - p.y * geometry.scale)),
     };
     camera.x = clamp(camera.x, bounds.minX, bounds.maxX);
     camera.y = clamp(camera.y, bounds.minY, bounds.maxY);
@@ -152,7 +165,7 @@ export function mountCanvasView(main, items, getLayout) {
     // Overflow-hidden containers can still scroll when keyboard focus moves.
     main.scrollLeft = 0;
     main.scrollTop = 0;
-    if (x || y) moveTo(camera.x + x / depth(item.dataset.item), camera.y + y / depth(item.dataset.item));
+    if (x || y) moveTo(camera.x + x, camera.y + y);
   });
   preference.addEventListener('change', () => { Object.assign(camera, target); resize(); });
   resize();

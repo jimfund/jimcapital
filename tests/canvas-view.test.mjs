@@ -32,7 +32,7 @@ function fixture(t, reduced = false) {
   const items = new Map();
   const layout = { items: {} };
   for (const [id, x, y, content] of [
-    ['angel', 420, 78, '<div class="angel-window"><img alt=""></div>'],
+    ['angel', 420, 78, '<div class="frame"><div class="angel-window"><img alt=""></div></div>'],
     ['ai-ticker', 704, 20, '<a href="#prices">Prices</a>'],
     ['clock', 58, 344, '<button type="button">Spin</button>'],
     ['prediction', 286, 460, '<img alt="">'],
@@ -45,14 +45,20 @@ function fixture(t, reduced = false) {
     element.className = 'site-item'; element.dataset.item = id; element.innerHTML = content;
     main.append(element);
     Object.defineProperty(element, 'offsetHeight', { value: 240 });
-    items.set(id, { element, nativeWidth: 300 });
+    items.set(id, { element, nativeWidth: id === 'angel' ? 220 : 300 });
     layout.items[id] = { x, y, width: 220, z: 2 };
   }
+  const angelWindow = main.querySelector('.angel-window');
+  Object.defineProperties(angelWindow, {
+    clientWidth: { value: 188 }, clientHeight: { value: 188 * 414 / 268 },
+  });
   const controller = mountCanvasView(main, items, () => layout);
   const position = id => {
     const transform = items.get(id).element.style.transform;
     return transform.match(/translate3d\(([^p]+)px, ([^p]+)px/).slice(1).map(Number);
   };
+  const imagePosition = () => main.querySelector('.angel-window img').style.transform
+    .match(/translate3d\(([^p]+)px, ([^p]+)px/).slice(1).map(Number);
   const pointer = (type, x, y, target = main, options = {}) => {
     const event = new dom.window.MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX: x, clientY: y });
     Object.defineProperties(event, {
@@ -69,7 +75,7 @@ function fixture(t, reduced = false) {
     const event = new dom.window.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
     target.dispatchEvent(event); flush(); return event;
   };
-  return { main, doc, items, position, pointer, wheel, key, flush, controller, size,
+  return { main, doc, items, position, imagePosition, pointer, wheel, key, flush, controller, size,
     reset: () => key('Home'),
     reduce: value => { preference.matches = value; changePreference(); flush(); },
   };
@@ -87,7 +93,7 @@ test('desktop starts with the scene in view, while phone objects stay large enou
   assert.ok(Number.isFinite(canvasGeometry([], 0, 0).scale));
 });
 
-test('mouse and touch drags keep every foreground object on one plane, with only the angel behind it', t => {
+test('mouse and touch drags move the gold frame exactly with every foreground object', t => {
   for (const type of ['mouse', 'touch']) {
     const f = fixture(t);
     const initial = new Map([...f.items.keys()].map(id => [id, f.position(id)]));
@@ -95,13 +101,15 @@ test('mouse and touch drags keep every foreground object on one plane, with only
     f.pointer('pointermove', 500, 350, f.main, { type }); f.flush();
     f.pointer('pointerup', 500, 350, f.main, { type });
     for (const [id, start] of initial) {
-      const movement = id === 'angel' ? [68, 34] : [100, 50];
+      const movement = [100, 50];
       f.position(id).forEach((value, axis) => assert.ok(Math.abs(value - start[axis] - movement[axis]) < .001, id));
-      assert.equal(Number(f.items.get(id).element.style.zIndex), id === 'angel' ? 0 : 2);
+      assert.equal(Number(f.items.get(id).element.style.zIndex), 2);
     }
+    assert.ok(f.imagePosition()[0] < 0 && f.imagePosition()[1] < 0, 'only the image drifts behind the gold frame');
     assert.equal(f.main.classList.contains('is-panning'), false);
     f.reset();
     for (const [id, start] of initial) assert.deepEqual(f.position(id), start);
+    assert.deepEqual(f.imagePosition(), [0, 0]);
   }
 });
 
@@ -146,17 +154,36 @@ test('keyboard panning is bounded and Home returns to the complete starting comp
   assert.deepEqual(f.position('angel'), start);
 });
 
-test('reduced motion moves all objects together and can change while the canvas is open', t => {
+test('reduced motion disables movement inside the frame without changing the foreground plane', t => {
   const f = fixture(t, true);
   const angel = f.position('angel'), ship = f.position('ai-ticker');
   f.wheel({ deltaX: 80, deltaY: 40 });
   for (const [id, initial] of [['angel', angel], ['ai-ticker', ship]]) {
     assert.deepEqual(f.position(id).map((v, i) => v - initial[i]), [-80, -40]);
   }
+  assert.deepEqual(f.imagePosition(), [0, 0]);
   f.reduce(false);
-  assert.notEqual(f.position('angel')[0] - angel[0], f.position('ai-ticker')[0] - ship[0]);
+  assert.equal(f.position('angel')[0] - angel[0], f.position('ai-ticker')[0] - ship[0]);
+  assert.ok(f.imagePosition()[0] > 0 && f.imagePosition()[1] > 0);
   f.reset();
   assert.deepEqual(f.position('angel'), angel);
+  assert.deepEqual(f.imagePosition(), [0, 0]);
+});
+
+test('image parallax stays within the frame at either pan limit and after resizing', t => {
+  const f = fixture(t);
+  const viewport = f.main.querySelector('.angel-window');
+  for (const width of [1200, 390]) {
+    f.size.width = width; f.controller.resize();
+    for (const direction of [-1, 1]) {
+      f.wheel({ deltaX: direction * 1e6, deltaY: direction * 1e6 });
+      const [x, y] = f.imagePosition();
+      assert.equal(Math.sign(x), direction);
+      assert.equal(Math.sign(y), direction);
+      assert.ok(Math.abs(x) < viewport.clientWidth * .09, 'the enlarged image must cover the horizontal edges');
+      assert.ok(Math.abs(y) < viewport.clientHeight * .09, 'the enlarged image must cover the vertical edges');
+    }
+  }
 });
 
 test('canceled drags release capture and secondary touch pointers do not move the view', t => {
