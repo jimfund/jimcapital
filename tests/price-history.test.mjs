@@ -79,7 +79,7 @@ test('graphs defaults to SoftBank over 24 hours and does not mount on the homepa
  assert.equal($('[data-range="1d"]').getAttribute('aria-pressed'), 'true');
  const home = new JSDOM(readFileSync(new URL('../index.html', import.meta.url), 'utf8'), { url: 'https://example.com/' });
  assert.equal(mountPriceHistory(home.window.document), null);
- assert.equal(home.window.document.querySelector('#price-history-button').getAttribute('href'), '/graphs');
+ assert.equal(home.window.document.querySelector('.popout-tools'), null);
  assert.equal(home.window.document.querySelector('.softbank-tracker').hasAttribute('data-history'), false);
  home.window.close();
 });
