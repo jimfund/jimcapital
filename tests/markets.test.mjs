@@ -5,6 +5,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { getQuotes, getHistory, marketResponse } from '../cloud/markets.js';
 import { fetchCandles, fetchQuotes, QUOTE_GROUPS, RANGES } from '../cloud/market-providers.js';
 import { claimRefresh } from '../cloud/market-store.js';
+import { withMarketSnapshot } from '../cloud/market-homepage.js';
 
 const NOW = Date.parse('2026-10-01T20:10:00Z');
 const HOUR = 3600000, DAY = HOUR * 24;
@@ -69,6 +70,48 @@ test('one failed feed retains its saved quote, marks it stale, and backs off wit
  assert.equal(result.quotes.ANTHROPIC.stale, true); assert.equal(result.quotes.ANTHROPIC.price, 2000);
  assert.equal(result.quotes.OPENAI.stale, false); assert.equal(result.quotes.BTC.stale, false);
  await getQuotes(db, NOW + 35000, fetcher); assert.equal(failures, 1);
+});
+test('a partial XYZ refresh retains the missing instrument with its original timestamp', async () => {
+ const db = database(), p = provider(); await getQuotes(db, NOW, p.fetcher);
+ const partial = (url, options) => JSON.parse(options.body || '{}').type === 'metaAndAssetCtxs'
+  ? Response.json([{ universe: [{ name: 'xyz:SP500' }] }, [{ markPx: '6900' }]]) : p.fetcher(url, options);
+ const result = await getQuotes(db, NOW + 6000, partial);
+ assert.equal(result.quotes.SP500.price, 6900); assert.equal(result.quotes.SP500.stale, false);
+ assert.equal(result.quotes.SOFTBANK.price, 7500); assert.equal(result.quotes.SOFTBANK.stale, true);
+ assert.equal(result.quotes.SOFTBANK.asOf, NOW); assert.equal(result.quotes.SOFTBANK.fetchedAt, NOW);
+});
+test('expired quotes and history return before slow providers and then refresh for the next visitor', async t => {
+ const db = database(), p = provider();
+ await getQuotes(db, NOW, p.fetcher); await getHistory(db, 'SOFTBANK', '1d', NOW, p.fetcher);
+ let release;
+ const gate = new Promise(resolve => { release = resolve; });
+ t.after(release);
+ const background = [], options = { waitUntil: promise => background.push(promise) };
+ const next = provider(NOW + 61000), slow = async (...args) => { await gate; return next.fetcher(...args); };
+ const responses = Promise.all([getQuotes(db, NOW + 61000, slow, options), getHistory(db, 'SOFTBANK', '1d', NOW + 61000, slow, options)]);
+ let timeout;
+ const [quotes, history] = await Promise.race([responses, new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error('Blocked on provider')), 1000); })]).finally(() => clearTimeout(timeout));
+ assert.equal(quotes.quotes.SP500.price, 6800.5); assert.equal(quotes.quotes.SP500.stale, true);
+ assert.ok(history.points.length); assert.equal(history.stale, true); assert.equal(next.calls.length, 0);
+ assert.ok(background.length); release(); await Promise.all(background);
+ const refreshed = await getQuotes(db, NOW + 62000, next.fetcher);
+ assert.equal(refreshed.quotes.SP500.asOf, NOW + 61000); assert.equal(refreshed.quotes.SP500.stale, false);
+});
+test('homepage embeds real saved prices and history without any provider call, and still serves HTML if D1 is unavailable', async t => {
+ const db = database(), p = provider();
+ await getQuotes(db, NOW, p.fetcher); await getHistory(db, 'SOFTBANK', '1d', NOW, p.fetcher);
+ let calls = 0; t.mock.method(globalThis, 'fetch', () => { calls++; throw new Error('offline'); });
+ const source = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+ const page = () => new Response(source, { headers: { 'Content-Type': 'text/html', ETag: 'original' } });
+ const response = await withMarketSnapshot(page(), db, NOW + 61000), html = await response.text();
+ assert.ok(html.includes('id="spx-price">6,800.50</output>')); assert.ok(html.includes('id="softbank-price">7,500.00</output>'));
+ const snapshot = JSON.parse(html.match(/<script id="market-snapshot" type="application\/json">(.*?)<\/script>/s)[1]);
+ assert.ok(snapshot.softbank.points.length); assert.equal(snapshot.quotes.SP500.stale, true); assert.equal(calls, 0);
+ assert.equal(response.headers.get('ETag'), null);
+ const unavailable = await withMarketSnapshot(page(), { prepare() { throw new Error('D1 offline'); } }, NOW);
+ assert.equal(unavailable.status, 200); assert.ok((await unavailable.text()).includes('market-snapshot'));
+ const cold = await withMarketSnapshot(page(), database(), NOW);
+ assert.equal(cold.status, 200); assert.equal(calls, 0);
 });
 test('history reuses cached candles, backfills only the missing prefix and refreshes a short tail', async () => {
  const db = database(), p = provider();

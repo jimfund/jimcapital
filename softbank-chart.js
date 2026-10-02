@@ -1,4 +1,4 @@
-import { subscribeQuotes, formatPrice } from './market-data.js';
+import { subscribeQuotes, formatPrice, readMarketSnapshot } from './market-data.js';
 
 const DAY = 86400000, NS = 'http://www.w3.org/2000/svg';
 const chartLabel = 'SoftBank 9984, past 24 hours. Move across the graph or use arrow keys to inspect prices in yen.';
@@ -29,7 +29,7 @@ export function nearestPoint(points, time) {
  return closest;
 }
 
-export function mountSoftbankChart(root, { doc = document, subscribe = subscribeQuotes, fetcher = fetch } = {}) {
+export function mountSoftbankChart(root, { doc = document, subscribe = subscribeQuotes, fetcher = fetch, initial = readMarketSnapshot(doc).softbank } = {}) {
  const output = root.querySelector('#softbank-price');
  const svg = doc.createElementNS(NS, 'svg');
  svg.classList.add('softbank-plot');
@@ -44,7 +44,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
  svg.innerHTML = `<defs><filter id="softbank-pen" x="-5%" y="-10%" width="110%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".065" numOctaves="2" seed="8" result="grain"/><feDisplacementMap in="SourceGraphic" in2="grain" scale=".65" xChannelSelector="R" yChannelSelector="G"/></filter></defs>
   <path class="softbank-line" filter="url(#softbank-pen)"/><g class="softbank-dots"></g>
   <line class="softbank-cursor" y1="4" y2="216" hidden/><circle class="softbank-point" r="4.5" hidden/>
-  <text class="softbank-message" x="150" y="110" text-anchor="middle">Loading…</text>`;
+  <text class="softbank-message" x="150" y="110" text-anchor="middle"></text>`;
  root.prepend(svg);
  const time = doc.createElement('time'); time.className = 'softbank-time'; root.append(time);
  const description = doc.createElement('span');
@@ -59,7 +59,9 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
   $('.softbank-cursor').setAttribute('hidden', ''); $('.softbank-point').setAttribute('hidden', '');
   output.textContent = formatPrice(quote?.price ?? geometry?.points.at(-1)?.price, 'points');
   output.dataset.state = quote ? (quote.stale ? 'stale' : 'live') : data?.stale ? 'stale' : 'live';
-  time.textContent = data?.stale || quote?.stale ? 'saved' : '';
+  time.textContent = '';
+  const asOf = quote?.asOf ?? geometry?.points.at(-1)?.time;
+  output.title = asOf ? `${data?.stale || quote?.stale ? 'Saved price' : 'Latest price'} · ${new Date(asOf).toLocaleString()}` : '';
   time.removeAttribute('datetime'); time.removeAttribute('title');
  }
  function inspect(next) {
@@ -82,7 +84,7 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
   svg.dataset.stale = String(data.stale);
   $('.softbank-line').setAttribute('d', geometry?.path || '');
   $('.softbank-dots').replaceChildren();
-  $('.softbank-message').textContent = geometry ? '' : 'No history yet';
+  $('.softbank-message').textContent = '';
   svg.setAttribute('aria-disabled', String(!geometry));
   if (geometry) {
    svg.setAttribute('aria-label', chartLabel);
@@ -106,17 +108,17 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
    if (!response.ok) throw new Error('History unavailable');
    const result = await response.json();
    if (disposed) return;
-   if (!Array.isArray(result.points) || !Number.isFinite(result.to) || !Number.isFinite(result.step)) throw new Error('Invalid history');
+   if (!validHistory(result) || !softbankGeometry(result)) throw new Error('History unavailable');
    const wasInspecting = selectedTime !== null;
    data = result; render();
    if (!wasInspecting) rest();
   } catch {
    if (disposed) return;
    if (data) { data = { ...data, stale: true }; const wasInspecting = selectedTime !== null; render(); if (!wasInspecting) rest(); }
-   else { $('.softbank-message').textContent = 'History unavailable'; svg.setAttribute('aria-label', 'SoftBank history unavailable. Press Enter or tap to retry.'); }
+   else { svg.setAttribute('aria-label', 'SoftBank history unavailable. Press Enter or tap to retry.'); }
   } finally {
    clearTimeout(timeout); inFlight = false;
-   if (!disposed && !doc.hidden) timer = setTimeout(refresh, 60000);
+   if (!disposed && !doc.hidden) timer = setTimeout(refresh, data && !data.stale ? 60000 : 5000);
   }
  }
  function move(event) {
@@ -139,9 +141,15 @@ export function mountSoftbankChart(root, { doc = document, subscribe = subscribe
  });
  const visibility = () => { clearTimeout(timer); if (!doc.hidden) refresh(); };
  doc.addEventListener('visibilitychange', visibility);
- const unsubscribe = subscribe(quotes => { quote = quotes.SOFTBANK; if (selectedTime === null) rest(); });
+ doc.defaultView?.addEventListener('online', refresh);
+ function validHistory(value) {
+  return value?.symbol === 'SOFTBANK' && Array.isArray(value.points) && Number.isFinite(value.to) && Number.isFinite(value.step) && value.step > 0
+   && value.points.every(p => Number.isFinite(p?.time) && Number.isFinite(p?.price) && p.price > 0);
+ }
+ if (validHistory(initial) && softbankGeometry(initial)) { data = initial; render(); rest(); }
+ const unsubscribe = subscribe(quotes => { quote = quotes.SOFTBANK || quote; if (selectedTime === null) rest(); });
  refresh();
- return { refresh, destroy() { disposed = true; clearTimeout(timer); controller?.abort(); unsubscribe(); doc.removeEventListener('visibilitychange', visibility); svg.remove(); time.remove(); description.remove(); } };
+ return { refresh, destroy() { disposed = true; clearTimeout(timer); controller?.abort(); unsubscribe(); doc.removeEventListener('visibilitychange', visibility); doc.defaultView?.removeEventListener('online', refresh); svg.remove(); time.remove(); description.remove(); } };
 }
 if (typeof document !== 'undefined') {
  const root = document.querySelector('.softbank-tracker');

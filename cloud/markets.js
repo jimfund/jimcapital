@@ -10,7 +10,17 @@ async function coalesce(db, key, run) {
  map.set(key, promise);
  try { return await promise; } finally { map.delete(key); }
 }
-async function refreshed(db, key, fresh, update, now) {
+async function refreshed(db, key, fresh, update, now, { cacheOnly = false, waitUntil } = {}) {
+ if (cacheOnly || waitUntil) {
+  const saved = await readCache(db, key);
+  if (cacheOnly || fresh(saved) || saved?.retry_at > now) return saved;
+  if (saved?.data) {
+   // Serve the durable snapshot immediately; provider latency belongs to
+   // the background refresh, not the visitor's display.
+   waitUntil(refreshed(db, key, fresh, update, now).catch(error => console.warn('Background market refresh failed', key, error.message)));
+   return saved;
+  }
+ }
  return coalesce(db, key, async () => {
   let row = await readCache(db, key);
   if (fresh(row) || row?.retry_at > now) return row;
@@ -40,22 +50,27 @@ async function refreshed(db, key, fresh, update, now) {
  });
 }
 
-export async function getQuotes(db, now = Date.now(), fetcher = fetch) {
+export async function getQuotes(db, now = Date.now(), fetcher = fetch, options = {}) {
  const groups = await Promise.all(QUOTE_GROUPS.map(async group => {
   const key = `quote:${group.key}`;
-  const row = await refreshed(db, key, row => row?.data && row.expires_at > now, async (_row, lease) => {
-   const values = await fetchQuotes(group, now, fetcher);
+  const row = await refreshed(db, key, row => row?.data && row.expires_at > now, async (previous, lease) => {
+   const incoming = await fetchQuotes(group, now, fetcher);
+   const values = Object.fromEntries(group.symbols.map(symbol => {
+    const saved = previous?.data?.values[symbol];
+    return [symbol, incoming[symbol] ? { ...incoming[symbol], fetchedAt: now }
+     : saved ? { ...saved, fetchedAt: saved.fetchedAt ?? previous.data.fetchedAt, stale: true } : null];
+   }));
    await cacheWrite(db, key, { values, fetchedAt: now }, now + group.ttl, lease).run();
-  }, now);
+  }, now, options);
   return Object.fromEntries(group.symbols.map(symbol => {
    const quote = row?.data?.values[symbol];
-   return [symbol, quote ? { ...quote, fetchedAt: row.data.fetchedAt, stale: row.expires_at <= now || now - quote.asOf > 300_000 } : null];
+   return [symbol, quote ? { ...quote, fetchedAt: quote.fetchedAt ?? row.data.fetchedAt, stale: !!quote.stale || row.expires_at <= now || now - quote.asOf > 300_000 } : null];
   }));
  }));
  return { quotes: Object.assign({}, ...groups) };
 }
 
-export async function getSeries(db, series, range, from, now, fetcher = fetch) {
+export async function getSeries(db, series, range, from, now, fetcher = fetch, options = {}) {
  const key = `history:${series}:${range.interval}`;
  const fresh = row => row?.data && row.data.from <= from && row.expires_at > now;
  const update = async (previous, lease) => {
@@ -81,20 +96,20 @@ export async function getSeries(db, series, range, from, now, fetcher = fetch) {
    cacheWrite(db, key, { from: Math.max(cutoff, coverageFrom), through, updatedAt: now }, through + range.ttl, lease),
   ]);
  };
- let row = await refreshed(db, key, fresh, update, now);
+ let row = await refreshed(db, key, fresh, update, now, options);
  // A wider request may have joined a narrower refresh in this Worker.
  // Recheck coverage before returning, then backfill its missing prefix.
- if (row?.data && row.data.from > from && row.retry_at <= now && row.lease_until <= now) {
+ if (!options.cacheOnly && !options.waitUntil && row?.data && row.data.from > from && row.retry_at <= now && row.lease_until <= now) {
   row = await refreshed(db, key, fresh, update, now);
  }
  const candles = await readCandles(db, series, range.interval, from, now);
  return { candles, updatedAt: row?.data?.updatedAt ?? null, stale: !row?.data || row.expires_at <= now, partial: !row?.data || row.data.from > from, available: !!row?.data };
 }
 
-export async function getHistory(db, symbol, rangeName, now = Date.now(), fetcher = fetch) {
+export async function getHistory(db, symbol, rangeName, now = Date.now(), fetcher = fetch, options = {}) {
  const market = MARKETS[symbol], range = RANGES[rangeName];
  const from = Math.floor((now - range.duration) / range.step) * range.step;
- const series = await Promise.all(market.series.map(s => getSeries(db, s, range, from, now, fetcher)));
+ const series = await Promise.all(market.series.map(s => getSeries(db, s, range, from, now, fetcher, options)));
  if (series.some(s => !s.available && !s.candles.length)) return null;
  let points = series[0].candles;
  if (series.length === 2) {
@@ -105,18 +120,19 @@ export async function getHistory(db, symbol, rangeName, now = Date.now(), fetche
   updatedAt: Math.min(...series.map(s => s.updatedAt ?? 0)), stale: series.some(s => s.stale), partial: series.some(s => s.partial), points };
 }
 
-export async function marketResponse(request, db) {
+export async function marketResponse(request, db, context) {
  const url = new URL(request.url);
+ const options = context?.waitUntil ? { waitUntil: promise => context.waitUntil(promise) } : {};
  const reply = (body, status = 200) => Response.json(body, { status, headers: {
   'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...(status === 503 ? { 'Retry-After': '3' } : {}),
  } });
  if (request.method !== 'GET') return reply({ error: 'Method not allowed.' }, 405);
  try {
-  if (url.pathname === '/api/markets/quotes') return reply(await getQuotes(db));
+  if (url.pathname === '/api/markets/quotes') return reply(await getQuotes(db, Date.now(), fetch, options));
   if (url.pathname !== '/api/markets/history') return reply({ error: 'Not found.' }, 404);
   const symbol = url.searchParams.get('symbol'), range = url.searchParams.get('range') || '1w';
   if (!Object.hasOwn(MARKETS, symbol) || !Object.hasOwn(RANGES, range)) return reply({ error: 'Choose a supported market and time range.' }, 400);
-  const result = await getHistory(db, symbol, range);
+  const result = await getHistory(db, symbol, range, Date.now(), fetch, options);
   return result ? reply(result) : reply({ error: 'Price history is temporarily unavailable. Please try again.' }, 503);
  } catch (error) {
   console.error('Market data unavailable', error.message);

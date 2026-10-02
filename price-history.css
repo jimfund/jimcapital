@@ -1,7 +1,7 @@
 [data-history] { cursor: pointer; }
 [data-history]:focus-visible { outline: 2px dashed #444; outline-offset: 7px; }
 .editing [data-history] { cursor: move; }
-[data-state="stale"] { opacity: .5; }
+.ai-quote[data-state="stale"] { opacity: .5; }
 #price-history-button { padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fffffff5; color: #333; font: 13px system-ui, sans-serif; cursor: pointer; text-decoration: none; }
 #price-history-button:hover { background: #eee; }
 #price-history-button:focus-visible { outline: 2px solid #828c78; outline-offset: 3px; }

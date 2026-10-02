@@ -1,6 +1,7 @@
 import { fromPost, renderArticle, validDocument, slugOK, svg, renderDirectory } from './content.js';
 import seed from './seed.json' with { type: 'json' };
 import { marketResponse } from './markets.js';
+import { withMarketSnapshot } from './market-homepage.js';
 
 const json = (data, status=200) => Response.json(data, {status,headers:{'Cache-Control':'no-store, private','Vary':'Cookie','Referrer-Policy':'no-referrer'}});
 const html = (body,status=200,privatePage=false) => new Response(body,{status,headers:{'Content-Type':'text/html; charset=utf-8','Cache-Control':privatePage?'no-store, private':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin'}});
@@ -22,9 +23,9 @@ function sameOrigin(request) { if(request.headers.get('Origin')!==new URL(reques
 async function owner(db) { return (await db.prepare("SELECT value FROM settings WHERE key='owner'").first())?.value; }
 async function requireOwner(request,db) {const id=userId(request);if(!id)throw new HTTPError(401,'Sign in to edit.');if(await owner(db)!==id)throw new HTTPError(403,'This editor belongs to the site owner.');return id;}
 function result(row) {return {id:row.id,slug:row.slug,document:JSON.parse(row.draft),revision:row.revision,publishedAt:row.published_at,hasUnpublishedChanges:row.published!==row.draft};}
-async function handle(request,env) {
+async function handle(request,env,context) {
  const url=new URL(request.url),path=url.pathname;
- if(path.startsWith('/api/markets/'))return marketResponse(request,env.DB);
+ if(path.startsWith('/api/markets/'))return marketResponse(request,env.DB,context);
  if(path==='/api/transfers'&&request.method==='POST') {
   if(!env.PUBLISHING_SECRET||request.headers.get('Authorization')!==`Bearer ${env.PUBLISHING_SECRET}`)throw new HTTPError(403,'Not authorized.');
   const data=await body(request);
@@ -141,6 +142,7 @@ async function handle(request,env) {
   const row=await env.DB.prepare(`SELECT slug,published, ${publicationDate} AS first_published_at FROM articles WHERE slug=? AND published IS NOT NULL`).bind(slug).first();
   if(row)return html(renderArticle(JSON.parse(row.published),{slug:row.slug,publishedAt:row.first_published_at}));
  }
- return env.ASSETS.fetch(request);
+ const response=await env.ASSETS.fetch(request);
+ return request.method==='GET'&&(path==='/'||path==='/index.html') ? withMarketSnapshot(response,env.DB) : response;
 }
-export default {async fetch(request,env) {try{return await handle(request,env);}catch(error){if(error instanceof HTTPError)return json({error:error.message},error.status);console.error('Article request failed',error);return json({error:'Could not complete that request. Your saved content is unchanged.'},503);}}};
+export default {async fetch(request,env,context) {try{return await handle(request,env,context);}catch(error){if(error instanceof HTTPError)return json({error:error.message},error.status);console.error('Article request failed',error);return json({error:'Could not complete that request. Your saved content is unchanged.'},503);}}};
