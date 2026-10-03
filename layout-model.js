@@ -14,6 +14,7 @@ export function fitScene(rects, width, height, gutter = 8) {
     y: (height - sceneHeight * scale) / 2 - top * scale };
 }
 export const validId = value => /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value || '');
+// Accept the retired UV widget ID so older saved layouts remain readable.
 export function isLayout(value) {
   const inRange = (v, low, high) => typeof v === 'number' && Number.isFinite(v) && v >= low && v <= high;
   return value?.version === 1 && value.items && typeof value.items === 'object' && !Array.isArray(value.items)
@@ -34,6 +35,5 @@ export function defaultPosition(id, index) {
   if (id === 'clock') return { x: 990, y: 15, width: 150, z: 5 };
   if (id === 'one-word') return { x: 810, y: 280, width: 85, z: 10 };
   if (id === 'ai-ticker') return { x: 704, y: 20, width: 488, z: 10 };
-  if (id === 'uv-machine') return { x: 260, y: 640, width: 280, z: 11 };
   return { x: 40 + (index % 3) * 390, y: 600 + Math.floor(index / 3) * 320, width: 320, z: index + 4 };
 }

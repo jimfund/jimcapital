@@ -89,10 +89,6 @@ export function mobileLayout(layers, width) {
 
   // Size the ship and its integrated billboard together as one piece of artwork.
   if (items.has('ai-ticker')) y += place('ai-ticker', 0, y, available) + gap;
-  if (items.has('uv-machine')) {
-    const meterWidth = Math.min(280, available);
-    y += place('uv-machine', (available - meterWidth) / 2, y, meterWidth) + gap;
-  }
   if (items.has('monitor')) {
     const monitorWidth = Math.min(340, available);
     y += place('monitor', (available - monitorWidth) / 2, y, monitorWidth) + gap;

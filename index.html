@@ -86,7 +86,6 @@
     <link rel="stylesheet" href="market-clock.css">
     <link rel="stylesheet" href="softbank-chart.css">
     <link rel="stylesheet" href="airship.css">
-    <link rel="stylesheet" href="uv-machine.css">
   </head>
   <body>
     <main>
@@ -131,18 +130,6 @@
           <div class="airship-status" role="status">CONNECTING</div>
         </div>
       </section>
-      <section class="uv-machine" data-state="unknown" aria-labelledby="uv-heading">
-        <div class="uv-nameplate"><span class="uv-wheel" aria-hidden="true">&#9762;&#65038;</span><h2 id="uv-heading">SOLAR RADIATION<br>WARNING MACHINE</h2><span class="uv-wheel" aria-hidden="true">&#9762;&#65038;</span></div>
-        <p class="uv-location">EAST PALO ALTO · 94303</p>
-        <div class="uv-screen" role="status" aria-live="polite" aria-atomic="true">
-          <div class="uv-reading"><output class="uv-value">—</output><span>UV INDEX</span></div>
-          <p class="uv-status">UNKNOWN</p>
-          <p class="uv-time">Checking this hour’s forecast…</p>
-        </div>
-        <div class="uv-scale" aria-hidden="true"><span>0</span><span class="uv-limit">3 · LIMIT</span><span>11+</span><i class="uv-needle" hidden></i></div>
-        <a class="uv-source" href="https://enviro.epa.gov/envirofacts/uv/search/results/zipcode/94303?forecast=hourly">[ EPA hourly forecast ]</a>
-        <noscript><p>Enable JavaScript to check the current forecast.</p></noscript>
-      </section>
     </main>
     <script id="market-snapshot" type="application/json">{}</script>
     <script src="ai-ticker.js" type="module"></script>
@@ -151,7 +138,6 @@
     <script src="ticker.js" type="module"></script>
     <script src="softbank-chart.js" type="module"></script>
     <script src="market-clock.js" type="module"></script>
-    <script src="uv-machine.js" type="module"></script>
     <script src="site.js" type="module"></script>
   </body>
 </html>
