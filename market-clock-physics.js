@@ -20,8 +20,8 @@ export function stepSpin(state, elapsed) {
   return { ...state, angle: done ? target : angle, velocity: done ? 0 : velocity, target, done };
 }
 
-export function clickSpin(angle) {
-  const destination = Math.round(angle / 180) * 180 + 540;
+export function clickSpin(angle, direction = 1) {
+  const destination = Math.round(angle / 180) * 180 + 540 * direction;
   return { angle, velocity: (destination - angle) * 2.4, target: null, destination };
 }
 
@@ -67,9 +67,9 @@ export function attachClockPhysics(button, getRotation, setRotation) {
     if (drag.distance > 5) setRotation(drag.angle + (event.clientX - drag.x) * 180 / drag.width);
     sample(performance.now());
   }
-  function flip() {
+  function flip(direction = 1) {
     stop();
-    motion = clickSpin(getRotation());
+    motion = clickSpin(getRotation(), direction);
     if (reducedMotion.matches) {
       setRotation(motion.destination % 360);
       motion = null;
@@ -101,7 +101,11 @@ export function attachClockPhysics(button, getRotation, setRotation) {
     button.classList.remove('is-dragging');
     if (button.hasPointerCapture(event.pointerId)) button.releasePointerCapture(event.pointerId);
     if (event.type !== 'pointerup') return;
-    if (tapped) { flip(); return; }
+    if (tapped) {
+      const bounds = button.getBoundingClientRect();
+      flip(event.clientY < bounds.top + bounds.height / 2 ? 1 : -1);
+      return;
+    }
     if (reducedMotion.matches) {
       setRotation(Math.round(getRotation() / 180) * 180 % 360);
       return;
