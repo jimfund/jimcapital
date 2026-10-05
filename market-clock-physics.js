@@ -103,7 +103,7 @@ export function attachClockPhysics(button, getRotation, setRotation) {
     if (event.type !== 'pointerup') return;
     if (tapped) {
       const bounds = button.getBoundingClientRect();
-      flip(event.clientY < bounds.top + bounds.height / 2 ? 1 : -1);
+      flip(event.clientY < bounds.top + bounds.height / 2 ? -1 : 1);
       return;
     }
     if (reducedMotion.matches) {
