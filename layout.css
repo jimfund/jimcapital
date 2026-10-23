@@ -3,6 +3,7 @@
 .one-word-link { display: block; position: relative; width: 85px; aspect-ratio: 1; overflow: hidden; }
 .one-word-link img { width: 1000%; max-width: none; height: auto; pointer-events: none; }
 .one-word-link:focus-visible { outline: 2px solid #828c78; outline-offset: 4px; }
+.land-portrait { display: block; width: 120px; height: auto; }
 .softbank-tracker { width: 300px; color: #111; }
 #softbank-price { display: block; margin: 0; font: 24px/1 "Courier New", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .doodled-monitor { position: relative; aspect-ratio: 4 / 3; }
@@ -58,3 +59,7 @@ body.editing { padding-top: 90px; align-items: start; }
 #popout-button:focus-visible { outline: 2px solid #828c78; outline-offset: 3px; }
 #popout-button:disabled { opacity: .5; cursor: wait; }
 #popout-status { max-width: 260px; background: #fffffff5; color: #555; font: 12px/1.4 system-ui, sans-serif; }
+
+.image-credits { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(64px, calc(env(safe-area-inset-bottom) + 48px)); z-index: 20000; padding: 6px 0; color: #74796d; font: 10px/1.4 "Courier New", monospace; text-underline-offset: 3px; }
+.image-credits:focus-visible { outline: 2px solid #828c78; outline-offset: 4px; }
+body.editing .image-credits { display: none; }

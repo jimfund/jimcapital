@@ -1,0 +1,27 @@
+{
+  "asset": "nick-land-framed.webp",
+  "description": "Nick Land in a slender ebonized walnut frame with an ivory mat. Black-and-white photograph and transparent background.",
+  "portrait": {
+    "title": "Nick Land October 2025 (1x1 cropped)",
+    "author": "Koolisid",
+    "crop": "Wabbuh",
+    "date": "2025-10-28",
+    "page": "https://commons.wikimedia.org/wiki/File:Nick_Land_October_2025_(1x1_cropped).jpg",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/1/11/Nick_Land_October_2025_%281x1_cropped%29.jpg",
+    "license": "CC BY-SA 4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+  },
+  "frame": {
+    "description": "AI-generated slender ebonized walnut frame with warm ivory mat"
+  },
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "creditsPage": "portrait-credits.html#nick-land",
+  "method": "Built-in image_gen compositing from the sourced photograph. Converted to black and white and framed. Transparent margins trimmed, 22px transparent border added, resized to 720 \u00d7 904 WebP at quality 90 with alpha preserved.",
+  "dimensions": {
+    "width": 720,
+    "height": 904
+  },
+  "prompt": "Use case: compositing. Asset type: small photographic framed portrait for the sparse jim.capital homepage. Input image is the actual Nick Land October 2025 photograph credited to Koolisid. Preserve this exact photograph: his identity, face proportions, eyes, expression, bald head, black shirt and the books behind him. Do not invent or beautify his face; retain the modest softness of the original webcam photograph. Convert the photograph to quiet neutral black and white, gently control the bright forehead highlights, and keep readable midtones. Compose the full head with its existing headroom and shoulders inside a slightly vertical frame, using the original photograph without stretching. Create a beautifully understated slender ebonized walnut picture frame, satin charcoal-black with the faintest warm wood grain, precise mitered corners, a tiny inner bevel and subtle believable edge depth. Narrow warm ivory archival paper mat on all sides, a little deeper below the photograph. Frame rails about 4 percent of outer width, mat about 7 percent; the face must read clearly at 120 CSS pixels wide. Outer aspect ratio about 0.84 (width/height). Perfectly frontal, straight and vertical, fully visible, softly lit diffuse daylight, no glare. Actual clean alpha transparency outside the single framed object, not white fill or a checkerboard. Tight composition with 2 percent transparent padding. No surrounding room, wall, table, easel, props, dramatic shadow, ornaments, gold decoration, text, nameplate, signature or watermark. Deliver one high resolution transparent PNG.",
+  "accessibility": "Informative alt text and a keyboard-accessible image credits link. No tooltip. Integrated with saved layout validation and the existing mobile artwork layout."
+}

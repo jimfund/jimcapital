@@ -128,6 +128,7 @@ async function init() {
   addItem('angel', main.querySelector('.frame'), 220);
   addItem('monitor', monitor, 400, true);
   addItem('softbank', main.querySelector('.softbank-tracker'), 300);
+  addItem('land', main.querySelector('.land-portrait'), 120);
   addItem('clock', main.querySelector('.market-clock'), 300);
   addItem('one-word', main.querySelector('.one-word-link'), 85);
   addItem('ai-ticker', main.querySelector('.ai-ticker'), 680);
